@@ -30,11 +30,13 @@ bool isDisplayInitialized = false;
 
 struct DashboardState {
     int activeProfile = 0;
-    int offsetX = 0; int offsetY = -14;
+    int offsetX = 0; int offsetY = 0;
     int activeWidth = 128; int activeHeight = 64;
     int brightness = 100;
     int shiftRpm = 6000;
     int maxTemp = 100;
+    int throttleMin = 0;
+    int throttleMax = 100;
 
     String slot1 = "rpm";
     String slot2 = "speed";
@@ -43,6 +45,7 @@ struct DashboardState {
 
     int simRpm = 0; int simSpeed = 0; int simTemp = 0;
     int simOil = 0; int simIat = 0; float simVolt = 0.0; float simFuel = 0.0;
+    int simThrottle = 0;
     int peakRpm = 0; int peakSpeed = 0; int peakTemp = 0;
     int timerState = 0;
     uint32_t timerStartMillis = 0;
@@ -72,6 +75,11 @@ void canTask(void * pvParameters) {
             else if (message.identifier == 0x329) { state.simTemp = (int)((message.data[1] * 0.75) - 48); }
             else if (message.identifier == 0x153) { state.simSpeed = (message.data[2] * 256 + message.data[1]) / 128; }
             else if (message.identifier == 0x1F6) { state.simOil = (int)message.data[1] - 48; }
+            else if (message.identifier == 0x121) { state.simThrottle = (int)message.data[1]; }
+            else if (message.identifier == 0x545) {
+                if (state.simSpeed < 3) { state.simFuel = (float)(message.data[1] * 256 + message.data[0]) / 100.0f; }
+                else { state.simFuel = (float)(message.data[5] * 256 + message.data[4]) / 100.0f; }
+            }
             state.simVolt = 14.1;
             xSemaphoreGive(stateMutex);
         }
@@ -88,6 +96,8 @@ void loadSettingsFromFlash() {
     state.brightness = prefs.getInt("bright", 100);
     state.shiftRpm = prefs.getInt("shift", 6000);
     state.maxTemp = prefs.getInt("maxT", 100);
+    state.throttleMin = prefs.getInt("thrMin", 0);
+    state.throttleMax = prefs.getInt("thrMax", 100);
     state.slot1 = prefs.getString("s1", "rpm");
     state.slot2 = prefs.getString("s2", "speed");
     state.slot3 = prefs.getString("s3", "temp");
@@ -136,6 +146,12 @@ void drawScreenSport(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     if (barW > barMaxW) barW = barMaxW; if (barW < 0) barW = 0;
     display->drawRect((int16_t)(offX + 4), (int16_t)(offY + 4), (int16_t)(w - 8), 12, SSD1306_WHITE);
     display->fillRect((int16_t)(offX + 4), (int16_t)(offY + 4), (int16_t)barW, 12, SSD1306_WHITE);
+
+    int throttleBarW = map(state.simThrottle, state.throttleMin, state.throttleMax, 0, barMaxW);
+    if (throttleBarW > barMaxW) throttleBarW = barMaxW; if (throttleBarW < 0) throttleBarW = 0;
+    display->drawRect((int16_t)(offX + 4), (int16_t)(offY + 20), (int16_t)(w - 8), 6, SSD1306_WHITE);
+    display->fillRect((int16_t)(offX + 4), (int16_t)(offY + 20), (int16_t)throttleBarW, 6, SSD1306_WHITE);
+
     display->setTextSize(1);
     display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 36)); display->print(String(spd) + " KM/H");
     String tStr = String(tmp) + "\xF7" "C";
@@ -146,13 +162,24 @@ void drawScreenSport(int16_t offX, int16_t offY, int16_t w, int16_t h) {
 
 void drawScreenTimer(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setTextSize(1);
-    String title = "POMIAR 0-100 KM/H"; auto wt = (int16_t)(strlen(title.c_str()) * 6);
-    display->setCursor((int16_t)(offX + (w - wt) / 2), (int16_t)(offY + 18)); display->print(title);
-    String valStr = "";
-    if (state.timerState == 0) { valStr = "READY"; }
-    else if (state.timerState == 1) { float current = (float)(millis() - state.timerStartMillis) / 1000.0f; valStr = String(current, 1) + "s"; }
-    else { valStr = String(state.timerResult, 2) + "s"; }
-    auto wv = (int16_t)(strlen(valStr.c_str()) * 6); display->setCursor((int16_t)(offX + (w - wv) / 2), (int16_t)(offY + 46)); display->print(valStr);
+    String title = "POMIAR 0-100 KM/H";
+    auto wt = (int16_t)(title.length() * 6);
+    display->setCursor((int16_t)(offX + (w - wt) / 2), (int16_t)(offY + 18));
+    display->print(title);
+
+    String valStr;
+    if (state.timerState == 0) { valStr = "GOTOWY"; }
+    else if (state.timerState == 1) {
+        float current = (float)(millis() - state.timerStartMillis) / 1000.0f;
+        valStr = String(current, 1) + "s";
+    } else {
+        valStr = String(state.timerResult, 2) + "s";
+    }
+
+    display->setTextSize(2);
+    auto wv = (int16_t)(valStr.length() * 12);
+    display->setCursor((int16_t)(offX + (w - wv) / 2), (int16_t)(offY + 40));
+    display->print(valStr);
 }
 
 void drawScreenPeaking(int16_t offX, int16_t offY, int16_t w, int16_t h) {
@@ -168,24 +195,29 @@ void drawScreenPeaking(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setCursor((int16_t)(122 - (int16_t)strlen(p3.c_str()) * 6 + offX), (int16_t)(offY + 56)); display->print(p3);
 }
 
-void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, int16_t h, int16_t offX, int16_t offY) {
+void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, int16_t h) {
     if (logoType == "none") return;
-    auto centerX = (int16_t)((w / 2) + offX); auto centerY = (int16_t)((h / 2) + offY);
+    auto centerX = (int16_t)(w / 2); auto centerY = (int16_t)(h / 2);
     if (timeElapsed < 800) {
         auto boxW = (int16_t)((timeElapsed * w) / 800); auto boxH = (int16_t)((timeElapsed * h) / 800);
         display->drawRect((int16_t)(centerX - boxW/2), (int16_t)(centerY - boxH/2), boxW, boxH, SSD1306_WHITE);
     }
     else if (timeElapsed < 2000) {
-        display->drawRect(offX, offY, w, h, SSD1306_WHITE); display->setTextSize(1);
+        display->drawRect(0, 0, w, h, SSD1306_WHITE); display->setTextSize(1);
         String text = (logoType == "mpower") ? "M - POWER" : "E46 M54B22";
-        auto tw = (int16_t)(strlen(text.c_str()) * 6); display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY + 6)); display->print(text);
-        auto barWidth = (int16_t)(((timeElapsed - 800) * (w - 20)) / 1200); display->fillRect((int16_t)(offX + 10), (int16_t)(centerY + 18), barWidth, 4, SSD1306_WHITE);
+        auto tw = (int16_t)(strlen(text.c_str()) * 6);
+        display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY - 4));
+        display->print(text);
+        auto barWidth = (int16_t)(((timeElapsed - 800) * (w - 20)) / 1200);
+        display->fillRect((int16_t)(10), (int16_t)(centerY + 10), barWidth, 4, SSD1306_WHITE);
     }
     else {
         if ((timeElapsed / 250) % 2 == 0) {
             display->setTextSize(1); String text = "SYSTEM OK";
-            auto tw = (int16_t)(strlen(text.c_str()) * 6); display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY + 5)); display->print(text);
-            display->drawRect(offX, offY, w, h, SSD1306_WHITE);
+            auto tw = (int16_t)(strlen(text.c_str()) * 6);
+            display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY - 4));
+            display->print(text);
+            display->drawRect(0, 0, w, h, SSD1306_WHITE);
         }
     }
 }
@@ -275,7 +307,7 @@ void renderTask(void * pvParameters) {
                         xSemaphoreGive(stateMutex);
                     }
                 } else {
-                    drawBootAnimation(elapsed, logo, (int16_t)w, (int16_t)h, (int16_t)offX, (int16_t)offY);
+                    drawBootAnimation(elapsed, logo, (int16_t)w, (int16_t)h);
                 }
             } else {
                 if (profile == 0) drawScreenGrid((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
@@ -303,6 +335,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
             if (doc["brightness"].is<int>()) { state.brightness = doc["brightness"]; prefs.putInt("bright", state.brightness); }
             if (doc["shiftRpm"].is<int>()) { state.shiftRpm = doc["shiftRpm"]; prefs.putInt("shift", state.shiftRpm); }
             if (doc["maxTemp"].is<int>()) { state.maxTemp = doc["maxTemp"]; prefs.putInt("maxT", state.maxTemp); }
+            if (doc["adaptThrottle"].is<const char*>()) {
+                String adaptType = doc["adaptThrottle"].as<String>();
+                if (adaptType == "min") { state.throttleMin = state.simThrottle; prefs.putInt("thrMin", state.throttleMin); }
+                else if (adaptType == "max") { state.throttleMax = state.simThrottle; prefs.putInt("thrMax", state.throttleMax); }
+            }
             if (doc["bootLogo"].is<const char*>()) { state.bootLogo = doc["bootLogo"].as<String>(); prefs.putString("bLogo", state.bootLogo); }
             if (doc["triggerBootTest"].is<bool>()) { state.isBootAnimating = true; state.bootAnimStart = millis(); }
             if (doc["resetPeaks"].is<bool>()) { state.peakRpm = 0; state.peakTemp = 0; state.peakSpeed = 0; state.timerState = 0; state.timerResult = 0; }
@@ -323,6 +360,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
         syncDoc["offX"] = state.offsetX; syncDoc["offY"] = state.offsetY;
         syncDoc["w"] = state.activeWidth; syncDoc["h"] = state.activeHeight;
         syncDoc["bright"] = state.brightness; syncDoc["shift"] = state.shiftRpm; syncDoc["maxT"] = state.maxTemp;
+        syncDoc["thrMin"] = state.throttleMin; syncDoc["thrMax"] = state.throttleMax;
         syncDoc["bLogo"] = state.bootLogo;
         syncDoc["s1"] = state.slot1; syncDoc["s2"] = state.slot2; syncDoc["s3"] = state.slot3;
         syncDoc["s4"] = state.slot4;
@@ -440,6 +478,7 @@ void loop() {
         doc["speed"] = state.simSpeed;
         doc["temp"] = state.simTemp;
         doc["volt"] = state.simVolt;
+        doc["throttle"] = state.simThrottle;
         doc["pRpm"] = state.peakRpm;
         doc["pSpd"] = state.peakSpeed;
         doc["pTmp"] = state.peakTemp;

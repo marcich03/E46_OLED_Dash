@@ -3,6 +3,7 @@ var currentOffsetX = 0; var currentOffsetY = 0; var currentWidth = 128; var curr
 var shiftRpmConfig = 6000;
 var slotMapping = { slot1: "rpm", slot2: "speed", slot3: "temp", slot4: "volt" };
 var isBootAnimating = false; var currentBootLogo = "mpower";
+var throttleMin = 0; var throttleMax = 100;
 
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -26,6 +27,7 @@ function initNetwork() {
         let data = JSON.parse(event.data);
 
         if(data.telemetry && !isBootAnimating) {
+            document.getElementById("currentThrottle").innerText = data.throttle;
             [0,1,2,3].forEach(id => {
                 let el = document.getElementById(`oledCanvasScreen${id}`);
                 if(el) el.classList.add("hidden");
@@ -41,6 +43,11 @@ function initNetwork() {
             if(barWidth > 100) barWidth = 100;
             let barEl = document.getElementById("simSportBar");
             if(barEl) barEl.style.width = barWidth + "%";
+
+            let throttleBarW = ((data.throttle - throttleMin) / (throttleMax - throttleMin)) * 100;
+            if (throttleBarW < 0) throttleBarW = 0; if (throttleBarW > 100) throttleBarW = 100;
+            let throttleBarEl = document.getElementById("simThrottleBar");
+            if(throttleBarEl) throttleBarEl.style.width = throttleBarW + "%";
 
             let spdEl = document.getElementById("simSportSpeed");
             if(spdEl) spdEl.innerText = data.speed + " KM/H";
@@ -74,6 +81,10 @@ function initNetwork() {
 
             document.getElementById("shiftSlider").value = data.shift; shiftRpmConfig = data.shift; document.getElementById("shiftOutput").innerText = data.shift;
             document.getElementById("tempSlider").value = data.maxT; document.getElementById("tempOutput").innerText = data.maxT + "°C";
+
+            throttleMin = data.thrMin; throttleMax = data.thrMax;
+            document.getElementById("throttleMinVal").innerText = data.thrMin;
+            document.getElementById("throttleMaxVal").innerText = data.thrMax;
 
             let logoSelect = document.getElementById("selBootLogo");
             if(logoSelect) {
@@ -143,6 +154,9 @@ function initSubscribers() {
 
     document.getElementById("shiftSlider").addEventListener("input", function() { let val = parseInt(this.value); shiftRpmConfig = val; document.getElementById("shiftOutput").innerText = val; sendConfigDebounced({ shiftRpm: val }); });
     document.getElementById("tempSlider").addEventListener("input", function() { let val = parseInt(this.value); document.getElementById("tempOutput").innerText = val + "°C"; sendConfigDebounced({ maxTemp: val }); });
+
+    document.getElementById("btnAdaptMin").addEventListener("click", function() { sendConfigDebounced({ adaptThrottle: "min" }); });
+    document.getElementById("btnAdaptMax").addEventListener("click", function() { sendConfigDebounced({ adaptThrottle: "max" }); });
 
     document.getElementById("selBootLogo").addEventListener("change", function() { currentBootLogo = this.value; sendConfigDebounced({ bootLogo: this.value }); });
 
