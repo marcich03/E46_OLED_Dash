@@ -14,6 +14,7 @@ Wielofunkcyjny, cyfrowy wyświetlacz dla BMW E46, zbudowany na bazie mikrokontro
   - Napięcie akumulatora
   - Chwilowe zużycie paliwa (L/H lub L/100km)
   - Pozycja pedału gazu
+  - Obliczony aktualny bieg
 - **Wiele ekranów:**
   - **Siatka:** Dowolna konfiguracja 4 metryk.
   - **Sport:** Pasek obrotów, pasek wciśnięcia pedału gazu, prędkość i temperatura.
@@ -27,7 +28,11 @@ Wielofunkcyjny, cyfrowy wyświetlacz dla BMW E46, zbudowany na bazie mikrokontro
   - Konfiguracja wyświetlanych metryk.
   - Regulacja jasności ekranu i pozycji obrazu.
   - Interaktywna kalibracja (adaptacja) zakresu pedału gazu.
+  - Prosta adaptacja przełożeń dla wskaźnika biegu.
   - Możliwość uruchomienia animacji startowej i resetowania peaków.
+- **Zarządzanie Ustawieniami:**
+  - Eksport całej konfiguracji do pliku `bimmer_dash_backup.json`.
+  - Import ustawień z pliku.
 - **Aktualizacje OTA:** Możliwość wgrywania nowego oprogramowania przez Wi-Fi.
 - **Personalizacja:**
   - Wybór animacji startowej.

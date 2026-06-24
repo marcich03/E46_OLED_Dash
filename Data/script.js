@@ -26,6 +26,17 @@ function initNetwork() {
     websocket.onmessage = function(event) {
         let data = JSON.parse(event.data);
 
+        if (data.configBackup) {
+            const blob = new Blob([JSON.stringify(data.configBackup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bimmer_dash_backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            return;
+        }
+
         if(data.telemetry && !isBootAnimating) {
             document.getElementById("currentThrottle").innerText = data.throttle;
             [0,1,2,3].forEach(id => {
@@ -116,6 +127,9 @@ function updateOledSlotDisplay(slotId, metrics) {
             v = metrics.fuel.toFixed(1);
             u = metrics.speed < 3 ? "L/H" : "L/100";
             break;
+        case "gear":
+            v = metrics.gear > 0 ? metrics.gear : "N"; u = "";
+            break;
     }
     let elV = document.getElementById(slotId + "_val");
     let elU = document.getElementById(slotId + "_unit");
@@ -157,6 +171,37 @@ function initSubscribers() {
 
     document.getElementById("btnAdaptMin").addEventListener("click", function() { sendConfigDebounced({ adaptThrottle: "min" }); });
     document.getElementById("btnAdaptMax").addEventListener("click", function() { sendConfigDebounced({ adaptThrottle: "max" }); });
+
+    document.querySelectorAll(".adapt-gear-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            let gear = this.getAttribute("data-gear");
+            sendConfigDebounced({ adaptGear: gear });
+            this.innerText = `Bieg ${gear} Zapisany!`;
+            setTimeout(() => this.innerText = `Adaptuj Bieg ${gear}`, 2000);
+        });
+    });
+
+    document.getElementById("btnExport").addEventListener("click", function() {
+        if(websocket && websocket.readyState === WebSocket.OPEN) { websocket.send(JSON.stringify({ requestConfig: true })); }
+    });
+
+    document.getElementById("importFile").addEventListener("change", function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    if(websocket && websocket.readyState === WebSocket.OPEN) {
+                        websocket.send(JSON.stringify({ restoreConfig: config }));
+                    }
+                } catch (error) {
+                    alert("Błąd: Nieprawidłowy format pliku JSON.");
+                }
+            };
+            reader.readAsText(file);
+        }
+    });
 
     document.getElementById("selBootLogo").addEventListener("change", function() { currentBootLogo = this.value; sendConfigDebounced({ bootLogo: this.value }); });
 

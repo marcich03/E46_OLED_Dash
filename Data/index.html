@@ -71,10 +71,10 @@
         <section class="card" id="configMatrixCard">
             <h2>Konfiguracja Ekranu 'Siatka'</h2>
             <div class="grid-matrix">
-                <div class="select-box"><label>S1 (Lewa Góra):</label><select id="selSlot1" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
-                <div class="select-box"><label>S2 (Prawa Góra):</label><select id="selSlot2" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
-                <div class="select-box"><label>S3 (Lewy Dół):</label><select id="selSlot3" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
-                <div class="select-box"><label>S4 (Prawy Dół):</label><select id="selSlot4" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
+                <div class="select-box"><label>S1 (Lewa Góra):</label><select id="selSlot1" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option><option value="gear">Bieg</option></select></div>
+                <div class="select-box"><label>S2 (Prawa Góra):</label><select id="selSlot2" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option><option value="gear">Bieg</option></select></div>
+                <div class="select-box"><label>S3 (Lewy Dół):</label><select id="selSlot3" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option><option value="gear">Bieg</option></select></div>
+                <div class="select-box"><label>S4 (Prawy Dół):</label><select id="selSlot4" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option><option value="gear">Bieg</option></select></div>
             </div>
         </section>
 
@@ -96,13 +96,37 @@
         </section>
 
         <section class="card">
-            <h2>Adaptacja Pedału Gazu</h2>
-            <p>Aktualna wartość: <b id="currentThrottle" class="sim-val">0</b></p>
-            <div class="adapt-btn-group">
-                <button id="btnAdaptMin" class="btn">Ustaw MIN (puść pedał)</button>
-                <button id="btnAdaptMax" class="btn">Ustaw MAX (wciśnij do oporu)</button>
+            <h2>Adaptacje</h2>
+            <div class="control-group">
+                <label>Pedał Gazu:</label>
+                <p>Aktualna wartość: <b id="currentThrottle" class="sim-val">0</b></p>
+                <div class="adapt-btn-group">
+                    <button id="btnAdaptMin" class="btn">Ustaw MIN (puść pedał)</button>
+                    <button id="btnAdaptMax" class="btn">Ustaw MAX (wciśnij do oporu)</button>
+                </div>
+                <p style="margin-top: 10px;">Zapisane wartości: MIN: <b id="throttleMinVal" class="sim-val">0</b>, MAX: <b id="throttleMaxVal" class="sim-val">100</b></p>
             </div>
-            <p style="margin-top: 10px;">Zapisane wartości: MIN: <b id="throttleMinVal" class="sim-val">0</b>, MAX: <b id="throttleMaxVal" class="sim-val">100</b></p>
+            <div class="control-group" style="margin-top: 20px;">
+                <label>Wskaźnik Biegu:</label>
+                <p>Jedź ze stałą prędkością na danym biegu i wciśnij przycisk adaptacji.</p>
+                <div class="adapt-btn-group" style="flex-wrap: wrap;">
+                    <button class="btn adapt-gear-btn" data-gear="1">Adaptuj Bieg 1</button>
+                    <button class="btn adapt-gear-btn" data-gear="2">Adaptuj Bieg 2</button>
+                    <button class="btn adapt-gear-btn" data-gear="3">Adaptuj Bieg 3</button>
+                    <button class="btn adapt-gear-btn" data-gear="4">Adaptuj Bieg 4</button>
+                    <button class="btn adapt-gear-btn" data-gear="5">Adaptuj Bieg 5</button>
+                    <button class="btn adapt-gear-btn" data-gear="6">Adaptuj Bieg 6</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Zarządzanie Ustawieniami</h2>
+            <div class="adapt-btn-group">
+                <button id="btnExport" class="btn">Eksportuj Ustawienia</button>
+                <label for="importFile" class="btn">Importuj Ustawienia</label>
+                <input type="file" id="importFile" class="hidden" accept=".json">
+            </div>
         </section>
 
         <section class="card border-alert">

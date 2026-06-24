@@ -37,6 +37,7 @@ struct DashboardState {
     int maxTemp = 100;
     int throttleMin = 0;
     int throttleMax = 100;
+    float gearRatios[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     String slot1 = "rpm";
     String slot2 = "speed";
@@ -46,6 +47,7 @@ struct DashboardState {
     int simRpm = 0; int simSpeed = 0; int simTemp = 0;
     int simOil = 0; int simIat = 0; float simVolt = 0.0; float simFuel = 0.0;
     int simThrottle = 0;
+    int currentGear = 0;
     int peakRpm = 0; int peakSpeed = 0; int peakTemp = 0;
     int timerState = 0;
     uint32_t timerStartMillis = 0;
@@ -98,6 +100,7 @@ void loadSettingsFromFlash() {
     state.maxTemp = prefs.getInt("maxT", 100);
     state.throttleMin = prefs.getInt("thrMin", 0);
     state.throttleMax = prefs.getInt("thrMax", 100);
+    prefs.getBytes("gears", state.gearRatios, sizeof(state.gearRatios));
     state.slot1 = prefs.getString("s1", "rpm");
     state.slot2 = prefs.getString("s2", "speed");
     state.slot3 = prefs.getString("s3", "temp");
@@ -116,6 +119,9 @@ void getMetricData(const String& type, String &val, String &unit) {
     else if (type == "fuel_l") {
         if (state.simSpeed < 3) { val = String(state.simFuel, 1); unit = "L/H"; }
         else { val = String(state.simFuel, 1); unit = "L/100"; }
+    } else if (type == "gear") {
+        val = (state.currentGear > 0) ? String(state.currentGear) : "N";
+        unit = "";
     } else { val = "---"; unit = ""; }
 }
 
@@ -252,6 +258,30 @@ void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, 
     }
 }
 
+void calculateGear() {
+    if (state.simRpm > 0 && state.simSpeed > 10) {
+        float currentRatio = (float)state.simRpm / (float)state.simSpeed;
+        int bestGear = 0;
+        float minDiff = 1000.0;
+        for (int i = 1; i <= 6; i++) {
+            if (state.gearRatios[i] > 0.1) {
+                float diff = abs(currentRatio - state.gearRatios[i]);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    bestGear = i;
+                }
+            }
+        }
+        if (minDiff < 20.0) {
+            state.currentGear = bestGear;
+        } else {
+            state.currentGear = 0;
+        }
+    } else {
+        state.currentGear = 0;
+    }
+}
+
 void renderTask(void * pvParameters) {
     static int lastContrast = -1;
     for(;;) {
@@ -273,6 +303,9 @@ void renderTask(void * pvParameters) {
             if (state.simSpeed == 0 && state.timerState != 2) { state.timerState = 0; }
             else if (state.simSpeed > 0 && state.simSpeed < 100 && state.timerState == 0) { state.timerState = 1; state.timerStartMillis = millis(); }
             else if (state.simSpeed >= 100 && state.timerState == 1) { state.timerState = 2; state.timerResult = (float)(millis() - state.timerStartMillis) / 1000.0f; }
+
+            calculateGear();
+
             profile = state.activeProfile;
             isAnimating = state.isBootAnimating;
             animStart = state.bootAnimStart;
@@ -358,6 +391,26 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         if (!error) {
             xSemaphoreTake(stateMutex, portMAX_DELAY);
             prefs.begin("bimmer-dash", false);
+            if (doc.containsKey("restoreConfig")) {
+                JsonObject config = doc["restoreConfig"];
+                state.offsetX = config["offX"]; prefs.putInt("offX", state.offsetX);
+                state.offsetY = config["offY"]; prefs.putInt("offY", state.offsetY);
+                state.activeWidth = config["w"]; prefs.putInt("actW", state.activeWidth);
+                state.activeHeight = config["h"]; prefs.putInt("actH", state.activeHeight);
+                state.brightness = config["bright"]; prefs.putInt("bright", state.brightness);
+                state.shiftRpm = config["shift"]; prefs.putInt("shift", state.shiftRpm);
+                state.maxTemp = config["maxT"]; prefs.putInt("maxT", state.maxTemp);
+                state.throttleMin = config["thrMin"]; prefs.putInt("thrMin", state.throttleMin);
+                state.throttleMax = config["thrMax"]; prefs.putInt("thrMax", state.throttleMax);
+                state.bootLogo = config["bLogo"].as<String>(); prefs.putString("bLogo", state.bootLogo);
+                state.slot1 = config["s1"].as<String>(); prefs.putString("s1", state.slot1);
+                state.slot2 = config["s2"].as<String>(); prefs.putString("s2", state.slot2);
+                state.slot3 = config["s3"].as<String>(); prefs.putString("s3", state.slot3);
+                state.slot4 = config["s4"].as<String>(); prefs.putString("s4", state.slot4);
+                JsonArray gears = config["gears"];
+                for(int i=0; i<7; i++) { state.gearRatios[i] = gears[i]; }
+                prefs.putBytes("gears", state.gearRatios, sizeof(state.gearRatios));
+            }
             if (doc["offsetX"].is<int>()) { state.offsetX = doc["offsetX"]; prefs.putInt("offX", state.offsetX); }
             if (doc["offsetY"].is<int>()) { state.offsetY = doc["offsetY"]; prefs.putInt("offY", state.offsetY); }
             if (doc["activeWidth"].is<int>()) { state.activeWidth = doc["activeWidth"]; prefs.putInt("actW", state.activeWidth); }
@@ -369,6 +422,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
                 String adaptType = doc["adaptThrottle"].as<String>();
                 if (adaptType == "min") { state.throttleMin = state.simThrottle; prefs.putInt("thrMin", state.throttleMin); }
                 else if (adaptType == "max") { state.throttleMax = state.simThrottle; prefs.putInt("thrMax", state.throttleMax); }
+            }
+            if (doc["adaptGear"].is<int>()) {
+                int gear = doc["adaptGear"];
+                if (gear >= 1 && gear <= 6 && state.simRpm > 0 && state.simSpeed > 0) {
+                    state.gearRatios[gear] = (float)state.simRpm / (float)state.simSpeed;
+                    prefs.putBytes("gears", state.gearRatios, sizeof(state.gearRatios));
+                }
             }
             if (doc["bootLogo"].is<const char*>()) { state.bootLogo = doc["bootLogo"].as<String>(); prefs.putString("bLogo", state.bootLogo); }
             if (doc["triggerBootTest"].is<bool>()) { state.isBootAnimating = true; state.bootAnimStart = millis(); }
@@ -394,10 +454,45 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
         syncDoc["bLogo"] = state.bootLogo;
         syncDoc["s1"] = state.slot1; syncDoc["s2"] = state.slot2; syncDoc["s3"] = state.slot3;
         syncDoc["s4"] = state.slot4;
+        JsonArray gears = syncDoc.createNestedArray("gears");
+        for(int i=0; i<7; i++) { gears.add(state.gearRatios[i]); }
         xSemaphoreGive(stateMutex);
         char buffer[1024]; serializeJson(syncDoc, buffer); client->text(buffer);
+    } else if (type == WS_EVT_DATA) {
+        AwsFrameInfo *info = (AwsFrameInfo*)arg;
+        if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+            data[len] = 0;
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (char*)data);
+            if (!error && doc["requestConfig"]) {
+                JsonDocument backupDoc;
+                backupDoc["configBackup"] = true;
+                xSemaphoreTake(stateMutex, portMAX_DELAY);
+                backupDoc["offX"] = state.offsetX;
+                backupDoc["offY"] = state.offsetY;
+                backupDoc["w"] = state.activeWidth;
+                backupDoc["h"] = state.activeHeight;
+                backupDoc["bright"] = state.brightness;
+                backupDoc["shift"] = state.shiftRpm;
+                backupDoc["maxT"] = state.maxTemp;
+                backupDoc["thrMin"] = state.throttleMin;
+                backupDoc["thrMax"] = state.throttleMax;
+                backupDoc["bLogo"] = state.bootLogo;
+                backupDoc["s1"] = state.slot1;
+                backupDoc["s2"] = state.slot2;
+                backupDoc["s3"] = state.slot3;
+                backupDoc["s4"] = state.slot4;
+                JsonArray gears = backupDoc.createNestedArray("gears");
+                for(int i=0; i<7; i++) { gears.add(state.gearRatios[i]); }
+                xSemaphoreGive(stateMutex);
+                char buffer[1024];
+                serializeJson(backupDoc, buffer);
+                client->text(buffer);
+            } else {
+                handleWebSocketMessage(arg, data, len);
+            }
+        }
     }
-    if (type == WS_EVT_DATA) handleWebSocketMessage(arg, data, len);
 }
 
 void setup() {
@@ -509,6 +604,7 @@ void loop() {
         doc["temp"] = state.simTemp;
         doc["volt"] = state.simVolt;
         doc["throttle"] = state.simThrottle;
+        doc["gear"] = state.currentGear;
         doc["pRpm"] = state.peakRpm;
         doc["pSpd"] = state.peakSpeed;
         doc["pTmp"] = state.peakTemp;
