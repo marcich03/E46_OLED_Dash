@@ -11,7 +11,6 @@
 #include <Update.h>
 #include <Wire.h>
 
-// --- KONFIGURACJA SPRZĘTOWA ---
 #define BUTTON_PIN 16
 #define CAN_TX_PIN 5
 #define CAN_RX_PIN 4
@@ -21,7 +20,6 @@
 #define OLED_RESET -1
 #define OLED_ADDR 0x3C
 
-// Zmiana: deklaracja obiektu bez wywoływania konstruktora, który zależy od sprzętu
 Adafruit_SSD1306 *display = nullptr;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -30,7 +28,6 @@ Preferences prefs;
 bool isUpdatingOTA = false;
 bool isDisplayInitialized = false;
 
-// --- GLOBALNY STAN SYSTEMU ---
 struct DashboardState {
     int activeProfile = 0;
     int offsetX = 0; int offsetY = -14;
@@ -340,12 +337,6 @@ void setup() {
     delay(500);
     Serial0.println(">>> START - DELAYED ALLOCATION");
 
-    // PROBLEM: Kiedy Adafruit_SSD1306 jest deklarowany globalnie, wywołuje się w tle
-    // konstruktor klasy, który używa wewnętrznie Wire, który jeszcze nie został ustawiony w setup().
-    // Kiedy uruchamiały się inne zadania (WiFi/WebSerwer), zderzało się to w pamięci.
-    // Jedyny moment, w którym to działało, to gdy obiekty były wskaźnikami (test nr 3).
-    // Tym razem wskaźnik jest tylko na display.
-
     Wire.begin(17, 18);
     Wire.setClock(800000);
 
@@ -353,7 +344,6 @@ void setup() {
 
     if (!display->begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
         Serial0.println(">>> SSD1306 INIT FAILED!");
-        // Zamiast while(1) lecimy dalej
     } else {
         isDisplayInitialized = true;
         Serial0.println(">>> SSD1306 OK");
