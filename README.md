@@ -35,10 +35,38 @@ Wielofunkcyjny, cyfrowy wyświetlacz dla BMW E46, zbudowany na bazie mikrokontro
 
 ## Sprzęt
 
-- Mikrokontroler: **ESP32-S3** (np. ESP32-S3-DevKitC-1)
-- Wyświetlacz: **OLED 128x64 SSD1306** (interfejs I2C)
-- Transceiver CAN: Układ do komunikacji z magistralą CAN (np. TJA1050, MCP2551)
-- Przycisk do zmiany ekranów.
+- **Mikrokontroler:** ESP N32R16V ESP32S3
+- **Wyświetlacz:** Estardyn DIYUSER 0.96 cala OLED SSD1306 128x64
+- **Zasilanie:** Moduł ładowania DC-DC 24V/12V na 5V 5A
+- **Przycisk:** Przełącznik wciskany chwilowy PBS-110
+- **Transceiver CAN:** Moduł transceivera CAN Bus SN65HVD230 VP230 3.3V High-Speed
+- **Przewody:** UL10064 Przewód PTFE
+
+## Schemat połączeń
+
+### OLED
+- **VCC** -> 3.3V
+- **GND** -> GND
+- **SDA** -> GPIO 17
+- **SCL** -> GPIO 18
+
+### Przycisk
+- **Styk 1** -> GPIO 16
+- **Styk 2** -> GND
+
+### CAN
+- **3V3** -> 3.3V
+- **GND** -> GND
+- **TX** -> GPIO 5
+- **RX** -> GPIO 4
+- **CAN-H** -> PIN 9 (Czarna kostka - BMW CAN High)
+- **CAN-L** -> PIN 10 (Czarna kostka - BMW CAN Low)
+
+### Zasilanie
+- **IN +** -> PIN 5 (Czarna kostka - Term 15) / +12V po stacyjce
+- **IN -** -> PIN 1 (Czarna kostka - GND)
+- **OUT +** -> 5V na ESP
+- **OUT -** -> GND na ESP
 
 ## Oprogramowanie i Biblioteki
 
@@ -52,11 +80,11 @@ Projekt został stworzony w środowisku **PlatformIO** z wykorzystaniem framewor
 
 ## Instalacja
 
-1.  Sklonuj repozytorium.
-2.  Otwórz projekt w Visual Studio Code z zainstalowanym rozszerzeniem PlatformIO.
-3.  Podłącz sprzęt zgodnie ze schematem pinów zdefiniowanym w `src/main.cpp`.
-4.  Zbuduj i wgraj oprogramowanie na ESP32 (`PlatformIO: Upload`).
-5.  Wgraj system plików z interfejsem webowym (`PlatformIO: Upload Filesystem Image`).
+Instalacja oprogramowania odbywa się poprzez wgranie gotowego pliku `firmware.bin`, który można znaleźć w zakładce **Releases** na stronie projektu.
+
+Do wgrania oprogramowania można użyć jednego z poniższych narzędzi:
+- **Oficjalny ESP-IDF:** [https://docs.espressif.com/projects/esptool/en/latest/esp32s3/esptool/flashing-firmware.html](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/esptool/flashing-firmware.html)
+- **Tasmota Web Installer:** [https://tasmota.github.io/install/](https://tasmota.github.io/install/) (pozwala na wgranie własnego pliku .bin)
 
 ## Konfiguracja
 
