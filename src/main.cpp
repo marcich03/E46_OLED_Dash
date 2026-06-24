@@ -198,26 +198,56 @@ void drawScreenPeaking(int16_t offX, int16_t offY, int16_t w, int16_t h) {
 void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, int16_t h) {
     if (logoType == "none") return;
     auto centerX = (int16_t)(w / 2); auto centerY = (int16_t)(h / 2);
-    if (timeElapsed < 800) {
-        auto boxW = (int16_t)((timeElapsed * w) / 800); auto boxH = (int16_t)((timeElapsed * h) / 800);
-        display->drawRect((int16_t)(centerX - boxW/2), (int16_t)(centerY - boxH/2), boxW, boxH, SSD1306_WHITE);
-    }
-    else if (timeElapsed < 2000) {
-        display->drawRect(0, 0, w, h, SSD1306_WHITE); display->setTextSize(1);
-        String text = (logoType == "mpower") ? "M - POWER" : "E46 M54B22";
-        auto tw = (int16_t)(strlen(text.c_str()) * 6);
-        display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY - 4));
-        display->print(text);
-        auto barWidth = (int16_t)(((timeElapsed - 800) * (w - 20)) / 1200);
-        display->fillRect((int16_t)(10), (int16_t)(centerY + 10), barWidth, 4, SSD1306_WHITE);
-    }
-    else {
-        if ((timeElapsed / 250) % 2 == 0) {
+
+    if (logoType == "mpower" || logoType == "m54b22") {
+        if (timeElapsed < 800) {
+            auto boxW = (int16_t)((timeElapsed * w) / 800); auto boxH = (int16_t)((timeElapsed * h) / 800);
+            display->drawRect((int16_t)(centerX - boxW/2), (int16_t)(centerY - boxH/2), boxW, boxH, SSD1306_WHITE);
+        }
+        else if (timeElapsed < 2000) {
+            display->drawRect(0, 0, w, h, SSD1306_WHITE); display->setTextSize(1);
+            String text = (logoType == "mpower") ? "M - POWER" : "E46 M54B22";
+            auto tw = (int16_t)(strlen(text.c_str()) * 6);
+            display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY - 4));
+            display->print(text);
+            auto barWidth = (int16_t)(((timeElapsed - 800) * (w - 20)) / 1200);
+            display->fillRect((int16_t)(10), (int16_t)(centerY + 10), barWidth, 4, SSD1306_WHITE);
+        }
+        else {
+            if ((timeElapsed / 250) % 2 == 0) {
+                display->setTextSize(1); String text = "SYSTEM OK";
+                auto tw = (int16_t)(strlen(text.c_str()) * 6);
+                display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY - 4));
+                display->print(text);
+                display->drawRect(0, 0, w, h, SSD1306_WHITE);
+            }
+        }
+    } else if (logoType == "classic") {
+        if (timeElapsed < 1500) {
+            int alpha = (timeElapsed * 255) / 1500;
+            display->setTextSize(2);
+            display->setTextColor(SSD1306_WHITE, SSD1306_BLACK);
+            display->setCursor(centerX - 30, centerY - 8);
+            display->print("BMW");
+        } else {
             display->setTextSize(1); String text = "SYSTEM OK";
             auto tw = (int16_t)(strlen(text.c_str()) * 6);
             display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY - 4));
             display->print(text);
-            display->drawRect(0, 0, w, h, SSD1306_WHITE);
+        }
+    } else if (logoType == "lines") {
+        if (timeElapsed < 1000) {
+            int len = (timeElapsed * (w/2)) / 1000;
+            display->drawLine(centerX - len, centerY, centerX + len, centerY, SSD1306_WHITE);
+            display->drawLine(centerX, centerY - len/2, centerX, centerY + len/2, SSD1306_WHITE);
+        } else if (timeElapsed < 2000) {
+            display->drawLine(0, centerY, w, centerY, SSD1306_WHITE);
+            display->drawLine(centerX, 0, centerX, h, SSD1306_WHITE);
+        } else {
+            display->setTextSize(1); String text = "SYSTEM OK";
+            auto tw = (int16_t)(strlen(text.c_str()) * 6);
+            display->setCursor((int16_t)(centerX - tw/2), (int16_t)(centerY - 4));
+            display->print(text);
         }
     }
 }

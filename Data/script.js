@@ -182,7 +182,12 @@ function initSubscribers() {
             if(bootCanvas) bootCanvas.classList.remove("hidden");
 
             const textElement = document.getElementById("bootTextFallback");
-            if(textElement) textElement.innerText = currentBootLogo === "mpower" ? "M-POWER" : "E46 M54B22";
+            if(textElement) {
+                if (currentBootLogo === "mpower") textElement.innerText = "M-POWER";
+                else if (currentBootLogo === "m54b22") textElement.innerText = "E46 M54B22";
+                else if (currentBootLogo === "classic") textElement.innerText = "BMW";
+                else textElement.innerText = "";
+            }
 
             const progLabel = document.getElementById("bootPreloadProgress");
             if(progLabel) progLabel.innerText = "Animacja generowana w C++...";
