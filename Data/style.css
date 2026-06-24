@@ -1,0 +1,162 @@
+:root {
+    --bg-color: #0b0b0b;
+    --card-bg: #161616;
+    --bmw-amber: #ff9000;
+    --text-color: #e0e0e0;
+    --text-dim: #888;
+    --success: #00ff66;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, sans-serif; padding: 15px; display: flex; justify-content: center; }
+.container { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 15px; }
+.header-card { text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.main-label { font-size: 0.75rem; font-weight: bold; color: var(--text-dim); letter-spacing: 1px; }
+h2 { font-size: 0.85rem; color: var(--bmw-amber); margin-bottom: 12px; border-bottom: 1px solid #262626; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+.status-badge { display: block; width: fit-content; margin: 0 auto; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; background: #222; color: var(--text-dim); }
+.card { background: var(--card-bg); border: 1px solid #222; border-radius: 16px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+.border-alert { border: 1px solid #3a2211; }
+.border-custom { border: 1px solid #112a3a; }
+.border-max { border: 1px solid #3a1111; }
+.grid-data, .grid-sliders, .grid-matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dropdown { background: #222; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; font-size: 0.85rem; outline: none; appearance: none; -webkit-appearance: none; width: 100%; }
+.select-box { display: flex; flex-direction: column; gap: 4px; }
+label { font-size: 0.75rem; color: var(--text-dim); }
+
+.data-box { background: #1f1f1f; padding: 10px; border-radius: 12px; text-align: center; border-left: 3px solid var(--bmw-amber); }
+.data-box .label { display: block; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
+.data-box .value { font-size: 1.3rem; font-weight: 700; color: #fff; }
+
+.btn-alert { background: #2a1111 !important; border: 1px solid #5a1a1a !important; color: #ff5555 !important; width: 100%; }
+
+/* REWOLUCJA UKŁADU OLED */
+.oled-wrapper { background: #000; padding: 15px; border-radius: 12px; border: 2px solid #222; display: flex; justify-content: center; align-items: center; min-height: 160px; }
+.oled-screen { width: 256px; height: 128px; background: #000; position: relative; border: 1px dashed #333; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: opacity 0.2s ease; }
+.oled-canvas { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; box-sizing: border-box; transition: transform 0.05s linear; }
+.oled-canvas-hidden { display: none !important; }
+
+/* EMULACJA TRYBU NOCNEGO NA FIZYCZNYM SYMULATORZE */
+.oled-screen-dimmed { opacity: 0.35; filter: contrast(1.2); }
+
+.oled-wheel-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 1.1rem; font-weight: bold; width: 100%; padding: 0 10px; }
+.oled-wheel-divider { text-align: center; font-family: monospace; font-size: 0.8rem; color: #333 !important; letter-spacing: 1px; }
+
+.theme-amber .oled-canvas { color: #ffb000; }
+.theme-mpower .oled-canvas { color: #00a8ff; text-shadow: 0 0 4px rgba(0,168,255,0.6); }
+.theme-stealth .oled-canvas { color: #444; }
+
+.oled-line-1, .oled-line-2 { display: flex; justify-content: space-between; font-family: monospace; font-size: 1.05rem; font-weight: bold; width: 100%; gap: 8px; }
+.oled-slot { width: 50%; white-space: nowrap; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.oled-alert-active { position: absolute; inset: 0; background: #ff2222; color: white !important; display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-weight: bold; font-size: 1.3rem; animation: blink 0.4s infinite alternate; z-index: 10; }
+.oled-alert-hidden { display: none; }
+@keyframes blink { from { opacity: 0.3; } to { opacity: 1; } }
+
+.control-group { margin-bottom: 12px; }
+.slider-container { display: flex; align-items: center; gap: 8px; }
+.slider { flex: 1; height: 14px; border-radius: 7px; background: #262626; outline: none; -webkit-appearance: none; }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--bmw-amber); }
+.slider-output { font-size: 0.85rem; font-weight: bold; width: 55px; text-align: right; color: var(--bmw-amber); }
+.btn-group { display: flex; gap: 8px; width: 100%; }
+.btn { flex: 1; background: #222; border: 1px solid #333; color: var(--text-color); padding: 14px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+.btn.active { background: var(--bmw-amber); border-color: var(--bmw-amber); color: #000; }
+/* Dołącz te style na samym końcu pliku style.css */
+.btn-prime {
+    background: #11223a !important;
+    border: 1px solid #1a3e5a !important;
+    color: #00a8ff !important;
+    width: 100%;
+}
+.btn-prime:active {
+    background: #00a8ff !important;
+    color: #000 !important;
+}
+
+/* Stylizacja warstwy animacji bootowania */
+.boot-canvas {
+    align-items: center;
+    justify-content: center !important;
+    text-align: center;
+}
+.boot-logo {
+    font-size: 1.5rem;
+    font-weight: 900;
+    font-style: italic;
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+    animation: pulseLogo 0.8s infinite alternate;
+}
+.boot-sub {
+    font-size: 0.65rem;
+    color: #666;
+    letter-spacing: 1px;
+}
+
+@keyframes pulseLogo {
+    from { transform: scale(0.95); opacity: 0.7; }
+    to { transform: scale(1.02); opacity: 1; }
+}/* Wklej na samym końcu pliku style.css */
+.oled-img-frame {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Wymuszenie ostrego renderowania pikseli w Safari na iOS */
+    image-rendering: pixelated; 
+}
+/* Dołącz te style na samym końcu pliku style.css */
+.border-diag { border: 1px solid #7c3aed; }
+
+/* Baner motogodzin */
+.maintenance-banner {
+    background: #1e1b4b;
+    border: 1px solid #4338ca;
+    padding: 12px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.mth-title { font-size: 0.7rem; color: #a5b4fc; font-weight: bold; }
+.mth-value { font-size: 1.6rem; font-weight: 900; color: #38bdf8; font-family: monospace; }
+
+/* Kontener wykresu */
+.chart-container-js {
+    background: #000;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #222;
+    margin-bottom: 15px;
+    max-height: 180px;
+}
+
+/* Okno terminala sniffera CAN */
+.terminal-group { display: flex; flex-direction: column; gap: 4px; }
+.terminal-window {
+    background: #050505;
+    border: 1px solid #333;
+    height: 130px;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #38bdf8;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
+.terminal-input-row { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
+.terminal-input {
+    flex: 1;
+    background: #111;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+.btn-terminal { max-width: 90px; padding: 0; }
+.terminal-error { font-size: 0.7rem; color: #ff3333; font-weight: bold; margin-top: 2px; min-height: 12px; display: block; }

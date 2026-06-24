@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E46 OLED - Matrix V6.1</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .hidden { display: none !important; }
+        .tab-buttons { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab-btn { flex: 1; padding: 12px; background: #1a1a1a; color: #fff; border: 1px solid #333; cursor: pointer; text-align: center; border-radius: 4px; font-weight:bold; }
+        .tab-btn.active-tab { background: #ff9000; color: #000; border-color: #ff9000; }
+        .sim-val { font-family: monospace; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header class="card header-card">
+        <div id="statusLabel" class="status-badge">Inicjalizacja...</div>
+    </header>
+
+    <div class="tab-buttons">
+        <div class="tab-btn active-tab" id="btn-tab-scr1" onclick="switchTab('tab-scr1')">Ekrany</div>
+        <div class="tab-btn" id="btn-tab-global" onclick="switchTab('tab-global')">Globalne</div>
+    </div>
+
+    <section class="card">
+        <h2>Podgląd Live (Mirror ESP32)</h2>
+        <div class="oled-wrapper">
+            <div id="oledSimulator" class="oled-screen theme-amber">
+                <div id="oledCanvasScreen0" class="oled-canvas">
+                    <div class="oled-line-1" style="display:flex; justify-content:space-between; padding: 0 4px;">
+                        <div style="display:flex; width:50%;"><div id="slot1_val" style="width:4.5ch; text-align:right; font-weight:bold;">---</div><div id="slot1_unit" style="margin-left:5px;"></div></div>
+                        <div style="display:flex; width:50%; justify-content:flex-end; padding-right:12px;"><div id="slot2_val" style="text-align:right; font-weight:bold;">---</div><div id="slot2_unit" style="margin-left:5px;"></div></div>
+                    </div>
+                    <div class="oled-line-2" style="display:flex; justify-content:space-between; padding: 0 4px;">
+                        <div style="display:flex; width:50%;"><div id="slot3_val" style="width:4.5ch; text-align:right; font-weight:bold;">---</div><div id="slot3_unit" style="margin-left:5px;"></div></div>
+                        <div style="display:flex; width:50%; justify-content:flex-end;"><div id="slot4_val" style="text-align:right; font-weight:bold;">---</div><div id="slot4_unit" style="margin-left:5px;"></div></div>
+                    </div>
+                </div>
+                <div id="oledCanvasScreen1" class="oled-canvas hidden" style="padding: 4px 4px 0 4px; display: flex; flex-direction: column;">
+                    <div style="width:100%; height:12px; border:1px solid #ff9000;"><div id="simSportBar" style="height:100%; background:#ff9000; width:0%;"></div></div>
+                    <div style="display:flex; justify-content:space-between; margin-top:6px; padding: 0 4px;">
+                        <span id="simSportSpeed" class="sim-val" style="font-weight:bold;">0 KM/H</span>
+                        <span id="simSportTemp" class="sim-val" style="font-weight:bold;">0°C</span>
+                    </div>
+                    <div style="display:flex; justify-content:flex-start; margin-top:4px; padding: 0 4px;">
+                        <span id="simSportRpm" class="sim-val" style="font-weight:bold;">0 RPM</span>
+                    </div>
+                </div>
+                <div id="oledCanvasScreen2" class="oled-canvas hidden" style="text-align:center;">
+                    <div style="font-size:0.75rem; margin-top:4px; font-weight: normal; letter-spacing: 0.5px;">POMIAR 0-100 KM/H</div>
+                    <div id="simTimerValue" style="font-size:1.4rem; margin-top:6px; font-weight:bold;">READY</div>
+                </div>
+                <div id="oledCanvasScreen3" class="oled-canvas hidden" style="font-size:0.9rem; line-height:1.4; padding-left: 6px; padding-top: 2px;">
+                    <div>MAX RPM: <span id="simMaxRpm" class="sim-val">0</span></div>
+                    <div>MAX TMP: <span id="simMaxTemp" class="sim-val">0</span></div>
+                    <div>MAX SPD: <span id="simMaxSpeed" class="sim-val">0</span></div>
+                </div>
+                <div id="oledCanvasBoot" class="oled-canvas hidden boot-canvas" style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                    <div id="bootTextFallback" style="color: #ff9000; font-size: 1.2rem; font-weight:bold; letter-spacing: 1px;">M-POWER</div>
+                    <div id="bootPreloadProgress" class="boot-sub" style="margin-top:10px; font-size:0.7rem; color:#888;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="tab-scr1" class="tab-content">
+        <section class="card" id="configMatrixCard">
+            <h2>Konfiguracja Ekranu 'Siatka'</h2>
+            <div class="grid-matrix">
+                <div class="select-box"><label>S1 (Lewa Góra):</label><select id="selSlot1" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
+                <div class="select-box"><label>S2 (Prawa Góra):</label><select id="selSlot2" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
+                <div class="select-box"><label>S3 (Lewy Dół):</label><select id="selSlot3" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
+                <div class="select-box"><label>S4 (Prawy Dół):</label><select id="selSlot4" class="dropdown"><option value="rpm">Obroty</option><option value="speed">Prędkość</option><option value="temp">Temp Cieczy</option><option value="oil">Temp Oleju</option><option value="iat">Dolot IAT</option><option value="volt">Napięcie</option><option value="fuel_l">Spalanie</option></select></div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Zdalne Sterowanie</h2>
+            <button class="btn btn-prime" id="btnResetPeaks" style="background:#cc0000; border:none; margin-bottom:10px;">🛑 ZRESETUJ REKORDY TRASY (PEAKI)</button>
+            <button class="btn btn-prime" id="btnTestAnimation" style="background:#333; border:1px solid #555; margin-bottom:10px;">▶️ TESTUJ ANIMACJĘ STARTOWĄ</button>
+            <button class="btn btn-prime" onclick="window.location.href='/update'" style="background:#0055ff; border:none;">🔄 AKTUALIZACJA SYSTEMU (OTA) BIN FILE</button>
+        </section>
+    </div>
+
+    <div id="tab-global" class="tab-content hidden">
+        <section class="card">
+            <h2>Alerty i Konfiguracja</h2>
+            <div class="control-group"><label>Logo powitalne:</label><div class="slider-container"><select id="selBootLogo" class="dropdown"><option value="none">Brak</option><option value="mpower">M-POWER</option><option value="m54b22">E46 M54B22</option></select></div></div>
+            <div class="control-group"><label>Shift-Light (Krok 500 RPM):</label><div class="slider-container"><input type="range" min="2500" max="6500" step="500" value="6000" class="slider" id="shiftSlider"><span id="shiftOutput" class="slider-output">6000</span></div></div>
+            <div class="control-group"><label>Alert Przegrzania Cieczy:</label><div class="slider-container"><input type="range" min="95" max="105" step="1" value="100" class="slider" id="tempSlider"><span id="tempOutput" class="slider-output">100°C</span></div></div>
+            <div class="control-group"><label>Jasność sprzętowa OLED:</label><div class="slider-container"><input type="range" min="0" max="100" value="100" class="slider" id="brightnessSlider"><span id="brightnessValue" class="slider-output">100%</span></div></div>
+        </section>
+
+        <section class="card border-alert">
+            <h2>Geometria Ekranu</h2>
+            <div class="grid-sliders">
+                <div class="control-group"><label>Pozycja X:</label><div class="slider-container"><input type="range" min="-16" max="16" value="0" class="slider" id="offsetXSlider"><span id="offsetXOutput" class="slider-output">0px</span></div></div>
+                <div class="control-group"><label>Pozycja Y:</label><div class="slider-container"><input type="range" min="-16" max="16" value="0" class="slider" id="offsetYSlider"><span id="offsetYOutput" class="slider-output">0px</span></div></div>
+                <div class="control-group"><label>Szerokość:</label><div class="slider-container"><input type="range" min="64" max="128" value="128" class="slider" id="widthSlider"><span id="widthOutput" class="slider-output">128px</span></div></div>
+                <div class="control-group"><label>Wysokość:</label><div class="slider-container"><input type="range" min="32" max="64" value="64" class="slider" id="heightSlider"><span id="heightOutput" class="slider-output">64px</span></div></div>
+            </div>
+        </section>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
