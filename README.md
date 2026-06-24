@@ -52,11 +52,11 @@ Projekt został stworzony w środowisku **PlatformIO** z wykorzystaniem framewor
 
 ## Instalacja
 
-1.  Sklonuj repozytorium.
-2.  Otwórz projekt w Visual Studio Code z zainstalowanym rozszerzeniem PlatformIO.
-3.  Podłącz sprzęt zgodnie ze schematem pinów zdefiniowanym w `src/main.cpp`.
-4.  Zbuduj i wgraj oprogramowanie na ESP32 (`PlatformIO: Upload`).
-5.  Wgraj system plików z interfejsem webowym (`PlatformIO: Upload Filesystem Image`).
+Instalacja oprogramowania odbywa się poprzez wgranie gotowego pliku `firmware.bin`, który można znaleźć w zakładce **Releases** na stronie projektu.
+
+Do wgrania oprogramowania można użyć jednego z poniższych narzędzi:
+- **Oficjalny ESP-IDF:** [https://docs.espressif.com/projects/esptool/en/latest/esp32s3/esptool/flashing-firmware.html](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/esptool/flashing-firmware.html)
+- **Tasmota Web Installer:** [https://tasmota.github.io/install/](https://tasmota.github.io/install/) (pozwala na wgranie własnego pliku .bin)
 
 ## Konfiguracja
 
