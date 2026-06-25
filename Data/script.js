@@ -4,7 +4,8 @@ var shiftRpmConfig = 6000;
 var slotMapping = { slot1: "rpm", slot2: "speed", slot3: "temp", slot4: "volt" };
 var isBootAnimating = false; var currentBootLogo = "mpower";
 var throttleMin = 0; var throttleMax = 100;
-const screenNames = ["Siatka", "Sport", "Timer", "Peaki", "Trip"];
+const screenNames = ["Siatka", "Trip", "Sport", "Timer", "Peaki"];
+const screenCanvasMap = ["oledCanvasScreen0", "oledCanvasScreen4", "oledCanvasScreen1", "oledCanvasScreen2", "oledCanvasScreen3"];
 
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -41,11 +42,13 @@ function initNetwork() {
         if(data.telemetry && !isBootAnimating) {
             document.getElementById("liveScreenName").innerText = screenNames[data.profile] || "Nieznany";
             document.getElementById("currentThrottle").innerText = data.throttle;
-            [0,1,2,3,4].forEach(id => {
-                let el = document.getElementById(`oledCanvasScreen${id}`);
+            
+            screenCanvasMap.forEach(id => {
+                let el = document.getElementById(id);
                 if(el) el.classList.add("hidden");
             });
-            let activeCanvas = document.getElementById(`oledCanvasScreen${data.profile}`);
+            const activeCanvasId = screenCanvasMap[data.profile];
+            let activeCanvas = document.getElementById(activeCanvasId);
             if(activeCanvas) activeCanvas.classList.remove("hidden");
 
             updateOledSlotDisplay("slot1", data); updateOledSlotDisplay("slot2", data);
@@ -117,6 +120,10 @@ function initNetwork() {
                 currentBootLogo = data.bLogo;
             }
 
+            for(let i=0; i<5; i++) {
+                document.getElementById(`screen${i}`).checked = data.screens[i];
+            }
+
             slotMapping.slot1 = data.s1; document.getElementById("selSlot1").value = data.s1;
             slotMapping.slot2 = data.s2; document.getElementById("selSlot2").value = data.s2;
             slotMapping.slot3 = data.s3; document.getElementById("selSlot3").value = data.s3;
@@ -171,6 +178,12 @@ function initSubscribers() {
             slotMapping[slot] = this.value; let payload = {}; payload[slot] = this.value; sendConfigDebounced(payload);
         });
     });
+
+    for(let i=0; i<5; i++) {
+        document.getElementById(`screen${i}`).addEventListener("change", function() {
+            sendConfigDebounced({ toggleScreen: i });
+        });
+    }
 
     document.getElementById("offsetXSlider").addEventListener("input", function() { currentOffsetX = parseInt(this.value); document.getElementById("offsetXOutput").innerText = currentOffsetX + "px"; updateSimulatorGeometry(); sendConfigDebounced({ offsetX: currentOffsetX }); });
     document.getElementById("offsetYSlider").addEventListener("input", function() { currentOffsetY = parseInt(this.value); document.getElementById("offsetYOutput").innerText = currentOffsetY + "px"; updateSimulatorGeometry(); sendConfigDebounced({ offsetY: currentOffsetY }); });

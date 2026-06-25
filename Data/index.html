@@ -12,6 +12,8 @@
         .tab-btn.active-tab { background: #ff9000; color: #000; border-color: #ff9000; }
         .sim-val { font-family: monospace; font-size: 1.1rem; }
         .adapt-btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .checkbox-group { display: flex; align-items: center; margin-top: 10px; }
+        .checkbox-group label { margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -94,6 +96,15 @@
     </div>
 
     <div id="tab-global" class="tab-content hidden">
+        <section class="card">
+            <h2>Zarządzanie Ekranami</h2>
+            <div class="checkbox-group"><input type="checkbox" id="screen0"><label for="screen0">Siatka</label></div>
+            <div class="checkbox-group"><input type="checkbox" id="screen1"><label for="screen1">Trip</label></div>
+            <div class="checkbox-group"><input type="checkbox" id="screen2"><label for="screen2">Sport</label></div>
+            <div class="checkbox-group"><input type="checkbox" id="screen3"><label for="screen3">Timer</label></div>
+            <div class="checkbox-group"><input type="checkbox" id="screen4"><label for="screen4">Peaki</label></div>
+        </section>
+
         <section class="card">
             <h2>Alerty i Konfiguracja</h2>
             <div class="control-group"><label>Logo powitalne:</label><div class="slider-container"><select id="selBootLogo" class="dropdown"><option value="none">Brak</option><option value="mpower">M-POWER</option><option value="m54b22">E46 M54B22</option><option value="classic">Klasyczne BMW</option><option value="lines">Dynamiczne Linie</option></select></div></div>
