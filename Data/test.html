@@ -27,7 +27,7 @@
     </div>
 
     <section class="card">
-        <h2>Podgląd Live (Mirror ESP32)</h2>
+        <h2>Podgląd Live [<span id="liveScreenName">Siatka</span>]</h2>
         <div class="oled-wrapper">
             <div id="oledSimulator" class="oled-screen theme-amber">
                 <div id="oledCanvasScreen0" class="oled-canvas">
@@ -86,6 +86,7 @@
 
         <section class="card">
             <h2>Zdalne Sterowanie</h2>
+            <button class="btn" id="btnChangeScreen" style="margin-bottom:10px;">Zmień Ekran (Test)</button>
             <button class="btn btn-prime" id="btnResetPeaks" style="background:#cc0000; border:none; margin-bottom:10px;">🛑 ZRESETUJ REKORDY TRASY (PEAKI)</button>
             <button class="btn btn-prime" id="btnResetTrip" style="background:#cc0000; border:none; margin-bottom:10px;">🛑 ZRESETUJ KOMPUTER POKŁADOWY</button>
             <button class="btn btn-prime" id="btnTestAnimation" style="background:#333; border:1px solid #555; margin-bottom:10px;">▶️ TESTUJ ANIMACJĘ STARTOWĄ</button>

@@ -27,7 +27,7 @@
     </div>
 
     <section class="card">
-        <h2>Podgląd Live (Mirror ESP32)</h2>
+        <h2>Podgląd Live [<span id="liveScreenName">Siatka</span>]</h2>
         <div class="oled-wrapper">
             <div id="oledSimulator" class="oled-screen theme-amber">
                 <div id="oledCanvasScreen0" class="oled-canvas">
@@ -151,8 +151,8 @@
         <section class="card">
             <h2>Status Pojazdu</h2>
             <div class="grid-matrix">
-                <div class="status-item">Drzwi przednie lewe: <span id="statusDoorFL" class="sim-val">NIE</span></div>
-                <div class="status-item">Drzwi przednie prawe: <span id="statusDoorFR" class="sim-val">NIE</span></div>
+                <div class="status-item">Drzwi kierowcy: <span id="statusDoorFL" class="sim-val">NIE</span></div>
+                <div class="status-item">Drzwi pasażera: <span id="statusDoorFR" class="sim-val">NIE</span></div>
                 <div class="status-item">Bagażnik otwarty: <span id="statusTrunk" class="sim-val">NIE</span></div>
                 <div class="status-item">Przebieg: <span id="statusOdo" class="sim-val">0 km</span></div>
                 <div class="status-item">Temp. zewnętrzna: <span id="statusExtTemp" class="sim-val">0°C</span></div>

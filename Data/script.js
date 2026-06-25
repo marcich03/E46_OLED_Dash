@@ -4,6 +4,7 @@ var shiftRpmConfig = 6000;
 var slotMapping = { slot1: "rpm", slot2: "speed", slot3: "temp", slot4: "volt" };
 var isBootAnimating = false; var currentBootLogo = "mpower";
 var throttleMin = 0; var throttleMax = 100;
+const screenNames = ["Siatka", "Sport", "Timer", "Peaki", "Trip"];
 
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -38,6 +39,7 @@ function initNetwork() {
         }
 
         if(data.telemetry && !isBootAnimating) {
+            document.getElementById("liveScreenName").innerText = screenNames[data.profile] || "Nieznany";
             document.getElementById("currentThrottle").innerText = data.throttle;
             [0,1,2,3,4].forEach(id => {
                 let el = document.getElementById(`oledCanvasScreen${id}`);

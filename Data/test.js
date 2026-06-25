@@ -233,6 +233,11 @@ function initSubscribers() {
         this.innerText = "ZRESETOWANO!"; setTimeout(() => this.innerText = "🛑 ZRESETUJ KOMPUTER POKŁADOWY", 2000);
     });
 
+    document.getElementById("btnChangeScreen").addEventListener("click", function() {
+        mockState.profile = (mockState.profile + 1) % 5;
+        generateTelemetry();
+    });
+
     let btnTestAnim = document.getElementById("btnTestAnimation");
     if(btnTestAnim) {
         btnTestAnim.addEventListener("click", function() {
@@ -316,7 +321,7 @@ mockWebSocket.onmessage = (event) => {
         if(tmrDiv) {
             if(data.tState === 0) tmrDiv.innerText = "READY";
             else if(data.tState === 1) tmrDiv.innerText = data.tTime.toFixed(1) + "s";
-            else tmrDiv.innerText = data.tTime.toFixed(2) + "s";
+            else if(data.tState === 2) tmrDiv.innerText = data.tTime.toFixed(2) + "s";
         }
 
         let mRpm = document.getElementById("simMaxRpm"); if(mRpm) mRpm.innerText = data.pRpm.toFixed(0);
