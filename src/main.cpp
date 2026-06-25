@@ -37,7 +37,7 @@ struct DashboardState {
     int maxTemp = 100;
     int throttleMin = 0;
     int throttleMax = 100;
-    float gearRatios[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // 0: Reverse, 1-5: Forward, 6: Not used
+    float gearRatios[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     String slot1 = "rpm";
     String slot2 = "speed";
@@ -47,11 +47,23 @@ struct DashboardState {
     int simRpm = 0; int simSpeed = 0; int simTemp = 0;
     int simOil = 0; int simIat = 0; float simVolt = 0.0; float simFuel = 0.0;
     int simThrottle = 0;
-    int currentGear = 0; // -1: Reverse, 0: Neutral, 1-5: Forward
+    int currentGear = 0;
     int peakRpm = 0; int peakSpeed = 0; int peakTemp = 0;
     int timerState = 0;
     uint32_t timerStartMillis = 0;
     float timerResult = 0.0;
+
+    // Trip Computer
+    float tripDistance = 0.0;
+    float tripFuelConsumed = 0.0;
+    uint32_t tripTimeElapsed = 0;
+
+    // Vehicle Status
+    bool doorOpen_FL = false;
+    bool doorOpen_FR = false;
+    bool trunkOpen = false;
+    uint32_t odometer = 0;
+    int8_t externalTemp = 0;
 
     String bootLogo = "mpower";
     bool isBootAnimating = true;
@@ -60,6 +72,7 @@ struct DashboardState {
 
 SemaphoreHandle_t stateMutex;
 uint32_t lastBroadcastTimer = 0;
+uint32_t lastTripUpdate = 0;
 
 void canTask(void * pvParameters) {
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT((gpio_num_t)CAN_TX_PIN, (gpio_num_t)CAN_RX_PIN, TWAI_MODE_LISTEN_ONLY);
@@ -82,6 +95,14 @@ void canTask(void * pvParameters) {
                 if (state.simSpeed < 3) { state.simFuel = (float)(message.data[1] * 256 + message.data[0]) / 100.0f; }
                 else { state.simFuel = (float)(message.data[5] * 256 + message.data[4]) / 100.0f; }
             }
+            else if (message.identifier == 0x3B7) {
+                state.doorOpen_FR = (message.data[0] & 0x01) != 0;
+                state.doorOpen_FL = (message.data[0] & 0x02) != 0;
+                state.trunkOpen = (message.data[0] & 0x10) != 0;
+            }
+            else if (message.identifier == 0x610) { state.externalTemp = (int8_t)message.data[0]; }
+            else if (message.identifier == 0x613) { state.odometer = (message.data[3] << 16) | (message.data[2] << 8) | message.data[1]; }
+
             state.simVolt = 14.1;
             xSemaphoreGive(stateMutex);
         }
@@ -106,6 +127,10 @@ void loadSettingsFromFlash() {
     state.slot3 = prefs.getString("s3", "temp");
     state.slot4 = prefs.getString("s4", "volt");
     state.bootLogo = prefs.getString("bLogo", "mpower");
+
+    state.tripDistance = prefs.getFloat("tripDist", 0.0);
+    state.tripFuelConsumed = prefs.getFloat("tripFuel", 0.0);
+    state.tripTimeElapsed = prefs.getUInt("tripTime", 0);
     prefs.end();
 }
 
@@ -202,6 +227,23 @@ void drawScreenPeaking(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setCursor((int16_t)(122 - (int16_t)strlen(p3.c_str()) * 6 + offX), (int16_t)(offY + 56)); display->print(p3);
 }
 
+void drawScreenTrip(int16_t offX, int16_t offY, int16_t w, int16_t h) {
+    display->setTextSize(1);
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 16)); display->print("DYSTANS:");
+    String d1 = String(state.tripDistance, 2) + " km";
+    display->setCursor((int16_t)(122 - (int16_t)strlen(d1.c_str()) * 6 + offX), (int16_t)(offY + 16)); display->print(d1);
+
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 36)); display->print("SRED. SPAL:");
+    float avgFuel = (state.tripDistance > 0) ? (state.tripFuelConsumed / state.tripDistance) * 100 : 0.0;
+    String d2 = String(avgFuel, 1) + " L/100";
+    display->setCursor((int16_t)(122 - (int16_t)strlen(d2.c_str()) * 6 + offX), (int16_t)(offY + 36)); display->print(d2);
+
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 56)); display->print("SRED. PRED:");
+    float avgSpeed = (state.tripTimeElapsed > 0) ? (state.tripDistance / (state.tripTimeElapsed / 3600.0)) : 0.0;
+    String d3 = String(avgSpeed, 0) + " km/h";
+    display->setCursor((int16_t)(122 - (int16_t)strlen(d3.c_str()) * 6 + offX), (int16_t)(offY + 56)); display->print(d3);
+}
+
 void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, int16_t h) {
     if (logoType == "none") return;
     auto centerX = (int16_t)(w / 2); auto centerY = (int16_t)(h / 2);
@@ -264,7 +306,7 @@ void calculateGear() {
         float currentRatio = (float)state.simRpm / (float)state.simSpeed;
         int bestGear = 0;
         float minDiff = 1000.0;
-        for (int i = 0; i <= 5; i++) { // 0 for R, 1-5 for forward
+        for (int i = 0; i <= 5; i++) {
             if (state.gearRatios[i] > 0.1) {
                 float diff = abs(currentRatio - state.gearRatios[i]);
                 if (diff < minDiff) {
@@ -281,6 +323,27 @@ void calculateGear() {
     } else {
         state.currentGear = 0;
     }
+}
+
+void updateTripComputer() {
+    uint32_t now = millis();
+    if (lastTripUpdate == 0) {
+        lastTripUpdate = now;
+        return;
+    }
+
+    if (state.simSpeed > 5) {
+        float deltaTime = (now - lastTripUpdate) / 1000.0;
+        state.tripTimeElapsed += deltaTime;
+        state.tripDistance += (state.simSpeed * deltaTime) / 3600.0;
+
+        if (state.simSpeed < 3) { // L/H
+            state.tripFuelConsumed += (state.simFuel * deltaTime) / 3600.0;
+        } else { // L/100km
+            state.tripFuelConsumed += ((state.simFuel * state.simSpeed) / 100.0) * (deltaTime / 3600.0);
+        }
+    }
+    lastTripUpdate = now;
 }
 
 void renderTask(void * pvParameters) {
@@ -306,6 +369,7 @@ void renderTask(void * pvParameters) {
             else if (state.simSpeed >= 100 && state.timerState == 1) { state.timerState = 2; state.timerResult = (float)(millis() - state.timerStartMillis) / 1000.0f; }
 
             calculateGear();
+            updateTripComputer();
 
             profile = state.activeProfile;
             isAnimating = state.isBootAnimating;
@@ -378,6 +442,7 @@ void renderTask(void * pvParameters) {
                 else if (profile == 1) drawScreenSport((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
                 else if (profile == 2) drawScreenTimer((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
                 else if (profile == 3) drawScreenPeaking((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
+                else if (profile == 4) drawScreenTrip((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
             }
             display->display();
         }
@@ -435,6 +500,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
             if (doc["bootLogo"].is<const char*>()) { state.bootLogo = doc["bootLogo"].as<String>(); prefs.putString("bLogo", state.bootLogo); }
             if (doc["triggerBootTest"].is<bool>()) { state.isBootAnimating = true; state.bootAnimStart = millis(); }
             if (doc["resetPeaks"].is<bool>()) { state.peakRpm = 0; state.peakTemp = 0; state.peakSpeed = 0; state.timerState = 0; state.timerResult = 0; }
+            if (doc["resetTrip"].is<bool>()) {
+                state.tripDistance = 0.0; state.tripFuelConsumed = 0.0; state.tripTimeElapsed = 0;
+                prefs.putFloat("tripDist", 0.0); prefs.putFloat("tripFuel", 0.0); prefs.putUInt("tripTime", 0);
+            }
             if (doc["slot1"].is<const char*>()) { state.slot1 = doc["slot1"].as<String>(); prefs.putString("s1", state.slot1); }
             if (doc["slot2"].is<const char*>()) { state.slot2 = doc["slot2"].as<String>(); prefs.putString("s2", state.slot2); }
             if (doc["slot3"].is<const char*>()) { state.slot3 = doc["slot3"].as<String>(); prefs.putString("s3", state.slot3); }
@@ -468,23 +537,23 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
             DeserializationError error = deserializeJson(doc, (char*)data);
             if (!error && doc["requestConfig"]) {
                 JsonDocument backupDoc;
-                backupDoc["configBackup"] = true;
+                JsonObject config = backupDoc.createNestedObject("configBackup");
                 xSemaphoreTake(stateMutex, portMAX_DELAY);
-                backupDoc["offX"] = state.offsetX;
-                backupDoc["offY"] = state.offsetY;
-                backupDoc["w"] = state.activeWidth;
-                backupDoc["h"] = state.activeHeight;
-                backupDoc["bright"] = state.brightness;
-                backupDoc["shift"] = state.shiftRpm;
-                backupDoc["maxT"] = state.maxTemp;
-                backupDoc["thrMin"] = state.throttleMin;
-                backupDoc["thrMax"] = state.throttleMax;
-                backupDoc["bLogo"] = state.bootLogo;
-                backupDoc["s1"] = state.slot1;
-                backupDoc["s2"] = state.slot2;
-                backupDoc["s3"] = state.slot3;
-                backupDoc["s4"] = state.slot4;
-                JsonArray gears = backupDoc.createNestedArray("gears");
+                config["offX"] = state.offsetX;
+                config["offY"] = state.offsetY;
+                config["w"] = state.activeWidth;
+                config["h"] = state.activeHeight;
+                config["bright"] = state.brightness;
+                config["shift"] = state.shiftRpm;
+                config["maxT"] = state.maxTemp;
+                config["thrMin"] = state.throttleMin;
+                config["thrMax"] = state.throttleMax;
+                config["bLogo"] = state.bootLogo;
+                config["s1"] = state.slot1;
+                config["s2"] = state.slot2;
+                config["s3"] = state.slot3;
+                config["s4"] = state.slot4;
+                JsonArray gears = config.createNestedArray("gears");
                 for(int i=0; i<7; i++) { gears.add(state.gearRatios[i]); }
                 xSemaphoreGive(stateMutex);
                 char buffer[1024];
@@ -587,7 +656,13 @@ void loop() {
             if (!longPressHandled && (millis() - pressTime > 1000)) {
                 xSemaphoreTake(stateMutex, portMAX_DELAY);
                 if (state.activeProfile == 3) { state.peakRpm = 0; state.peakTemp = 0; state.peakSpeed = 0; }
-                if (state.activeProfile == 2) { state.timerState = 0; state.timerResult = 0; }
+                else if (state.activeProfile == 2) { state.timerState = 0; state.timerResult = 0; }
+                else if (state.activeProfile == 4) {
+                    state.tripDistance = 0.0; state.tripFuelConsumed = 0.0; state.tripTimeElapsed = 0;
+                    prefs.begin("bimmer-dash", false);
+                    prefs.putFloat("tripDist", 0.0); prefs.putFloat("tripFuel", 0.0); prefs.putUInt("tripTime", 0);
+                    prefs.end();
+                }
                 xSemaphoreGive(stateMutex);
                 longPressHandled = true;
             }
@@ -596,7 +671,7 @@ void loop() {
             isPressed = false;
             if (!longPressHandled) {
                 xSemaphoreTake(stateMutex, portMAX_DELAY);
-                state.activeProfile++; if (state.activeProfile > 3) state.activeProfile = 0;
+                state.activeProfile++; if (state.activeProfile > 4) state.activeProfile = 0;
                 xSemaphoreGive(stateMutex);
             }
         }
@@ -624,9 +699,17 @@ void loop() {
         doc["oil"] = state.simOil;
         doc["iat"] = state.simIat;
         doc["tTime"] = (state.timerState == 1) ? ((millis() - state.timerStartMillis) / 1000.0) : state.timerResult;
+        doc["tripDist"] = state.tripDistance;
+        doc["tripFuel"] = state.tripFuelConsumed;
+        doc["tripTime"] = state.tripTimeElapsed;
+        doc["doorFL"] = state.doorOpen_FL;
+        doc["doorFR"] = state.doorOpen_FR;
+        doc["trunk"] = state.trunkOpen;
+        doc["odo"] = state.odometer;
+        doc["extTemp"] = state.externalTemp;
         xSemaphoreGive(stateMutex);
 
-        if (ws.count() > 0) { char buffer[512]; serializeJson(doc, buffer); ws.textAll(buffer); }
+        if (ws.count() > 0) { char buffer[1024]; serializeJson(doc, buffer); ws.textAll(buffer); }
     }
     vTaskDelay(pdMS_TO_TICKS(10));
 }

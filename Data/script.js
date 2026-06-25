@@ -39,7 +39,7 @@ function initNetwork() {
 
         if(data.telemetry && !isBootAnimating) {
             document.getElementById("currentThrottle").innerText = data.throttle;
-            [0,1,2,3].forEach(id => {
+            [0,1,2,3,4].forEach(id => {
                 let el = document.getElementById(`oledCanvasScreen${id}`);
                 if(el) el.classList.add("hidden");
             });
@@ -79,6 +79,18 @@ function initNetwork() {
             let mRpm = document.getElementById("simMaxRpm"); if(mRpm) mRpm.innerText = data.pRpm;
             let mTmp = document.getElementById("simMaxTemp"); if(mTmp) mTmp.innerText = data.pTmp + "°C";
             let mSpd = document.getElementById("simMaxSpeed"); if(mSpd) mSpd.innerText = data.pSpd + " KM/H";
+
+            document.getElementById("tripDist").innerText = data.tripDist.toFixed(2) + " km";
+            let avgFuel = (data.tripDist > 0) ? (data.tripFuel / data.tripDist) * 100 : 0.0;
+            document.getElementById("tripFuel").innerText = avgFuel.toFixed(1) + " L/100";
+            let avgSpeed = (data.tripTime > 0) ? (data.tripDist / (data.tripTime / 3600.0)) : 0.0;
+            document.getElementById("tripSpeed").innerText = avgSpeed.toFixed(0) + " km/h";
+
+            document.getElementById("statusDoorFL").innerText = data.doorFL ? "TAK" : "NIE";
+            document.getElementById("statusDoorFR").innerText = data.doorFR ? "TAK" : "NIE";
+            document.getElementById("statusTrunk").innerText = data.trunk ? "TAK" : "NIE";
+            document.getElementById("statusOdo").innerText = data.odo + " km";
+            document.getElementById("statusExtTemp").innerText = data.extTemp + "°C";
         }
 
         if(data.configSync) {
@@ -140,7 +152,7 @@ function updateOledSlotDisplay(slotId, metrics) {
 }
 
 function updateSimulatorGeometry() {
-    [0,1,2,3, "Boot"].forEach(id => {
+    [0,1,2,3,4, "Boot"].forEach(id => {
         let el = document.getElementById(`oledCanvasScreen${id}`);
         if(el) el.style.transform = `translate(${currentOffsetX * 2}px, ${currentOffsetY * 2}px)`;
     });
@@ -212,6 +224,11 @@ function initSubscribers() {
         this.innerText = "ZRESETOWANO!"; setTimeout(() => this.innerText = "🛑 ZRESETUJ REKORDY TRASY (PEAKI)", 2000);
     });
 
+    document.getElementById("btnResetTrip").addEventListener("click", function() {
+        if(websocket && websocket.readyState === WebSocket.OPEN) { websocket.send(JSON.stringify({ resetTrip: true })); }
+        this.innerText = "ZRESETOWANO!"; setTimeout(() => this.innerText = "🛑 ZRESETUJ KOMPUTER POKŁADOWY", 2000);
+    });
+
     let btnTestAnim = document.getElementById("btnTestAnimation");
     if(btnTestAnim) {
         btnTestAnim.addEventListener("click", function() {
@@ -220,7 +237,7 @@ function initSubscribers() {
 
             if(websocket && websocket.readyState === WebSocket.OPEN) { websocket.send(JSON.stringify({ triggerBootTest: true })); }
 
-            [0,1,2,3].forEach(id => {
+            [0,1,2,3,4].forEach(id => {
                 let el = document.getElementById(`oledCanvasScreen${id}`);
                 if(el) el.classList.add("hidden");
             });
