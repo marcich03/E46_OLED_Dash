@@ -14,26 +14,30 @@ Wielofunkcyjny, cyfrowy wyświetlacz dla BMW E46, zbudowany na bazie mikrokontro
   - Napięcie akumulatora
   - Chwilowe zużycie paliwa (L/H lub L/100km)
   - Pozycja pedału gazu
-  - Obliczony aktualny bieg
+  - Obliczony aktualny bieg (1-5, R, N)
 - **Wiele ekranów:**
   - **Siatka:** Dowolna konfiguracja 4 metryk.
   - **Sport:** Pasek obrotów, pasek wciśnięcia pedału gazu, prędkość i temperatura.
   - **Timer:** Pomiar przyspieszenia 0-100 km/h.
   - **Peaki:** Wyświetlanie maksymalnych wartości z trasy (RPM, prędkość, temperatura).
+  - **Komputer Pokładowy:** Dystans, średnie spalanie i średnia prędkość.
 - **Alerty i wskaźniki:**
   - Konfigurowalny Shift Light.
   - Alert o przegrzaniu silnika.
 - **Interfejs Webowy:**
   - Podgląd danych na żywo (mirroring ekranu OLED).
+  - **Status Pojazdu:** Informacje o otwartych drzwiach (kierowcy/pasażera), bagażniku, przebiegu i temperaturze zewnętrznej.
   - Konfiguracja wyświetlanych metryk.
   - Regulacja jasności ekranu i pozycji obrazu.
   - Interaktywna kalibracja (adaptacja) zakresu pedału gazu.
-  - Prosta adaptacja przełożeń dla wskaźnika biegu.
-  - Możliwość uruchomienia animacji startowej i resetowania peaków.
+  - Prosta adaptacja przełożeń dla wskaźnika biegu (5+R).
+  - Możliwość uruchomienia animacji startowej i resetowania liczników.
 - **Zarządzanie Ustawieniami:**
   - Eksport całej konfiguracji do pliku `bimmer_dash_backup.json`.
   - Import ustawień z pliku.
-- **Aktualizacje OTA:** Możliwość wgrywania nowego oprogramowania przez Wi-Fi.
+- **Aktualizacje OTA:**
+  - Dedykowana strona do aktualizacji oprogramowania.
+  - Pasek postępu wizualizujący proces wgrywania.
 - **Personalizacja:**
   - Wybór animacji startowej.
   - Ustawienia zapisywane w pamięci flash, odporne na aktualizacje.
