@@ -9,6 +9,7 @@ var slotMapping = { slot1: "rpm", slot2: "speed", slot3: "temp", slot4: "volt" }
 var isBootAnimating = false; var currentBootLogo = "mpower";
 var throttleMin = 15; var throttleMax = 90;
 const screenNames = ["Siatka", "Trip", "Sport", "Timer", "Peaki"];
+const screenCanvasMap = ["oledCanvasScreen0", "oledCanvasScreen4", "oledCanvasScreen1", "oledCanvasScreen2", "oledCanvasScreen3"];
 
 // --- Mock WebSocket ---
 const mockWebSocket = {
@@ -300,11 +301,13 @@ mockWebSocket.onmessage = (event) => {
     if (data.telemetry) {
         document.getElementById("liveScreenName").innerText = screenNames[data.profile] || "Nieznany";
         document.getElementById("currentThrottle").innerText = data.throttle.toFixed(0);
-        [0,1,2,3,4].forEach(id => {
-            let el = document.getElementById(`oledCanvasScreen${id}`);
+        
+        screenCanvasMap.forEach(id => {
+            let el = document.getElementById(id);
             if(el) el.classList.add("hidden");
         });
-        let activeCanvas = document.getElementById(`oledCanvasScreen${data.profile}`);
+        const activeCanvasId = screenCanvasMap[data.profile];
+        let activeCanvas = document.getElementById(activeCanvasId);
         if(activeCanvas) activeCanvas.classList.remove("hidden");
 
         updateOledSlotDisplay("slot1", data);
