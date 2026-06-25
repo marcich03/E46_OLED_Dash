@@ -155,7 +155,8 @@ int16_t getTextWidth(const String& s) { return (int16_t)(s.length() * 6); }
 
 void drawScreenGrid(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setTextSize(1);
-    auto yTop = (int16_t)((h / 2) - 4 + offY); auto yBottom = (int16_t)(h - 4 + offY);
+    auto yTop = (int16_t)(offY + (h / 2) - 8);
+    auto yBottom = (int16_t)(offY + h - 8);
     String v1, u1, v2, u2, v3, u3, v4, u4;
     getMetricData(state.slot1, v1, u1); getMetricData(state.slot2, v2, u2);
     getMetricData(state.slot3, v3, u3); getMetricData(state.slot4, v4, u4);
@@ -172,31 +173,46 @@ void drawScreenGrid(int16_t offX, int16_t offY, int16_t w, int16_t h) {
 }
 
 void drawScreenSport(int16_t offX, int16_t offY, int16_t w, int16_t h) {
-    int rpm = state.simRpm; int spd = state.simSpeed; int tmp = state.simTemp;
-    int maxRpmScale = state.shiftRpm > 0 ? state.shiftRpm + 500 : 7000;
-    int barMaxW = w - 8; int barW = map(rpm, 0, maxRpmScale, 0, barMaxW);
+    int rpm = state.simRpm; int spd = state.simSpeed;
+    int maxRpmScale = 6500;
+    int barMaxW = w - 8;
+
+    // RPM Bar
+    int barW = map(rpm, 0, maxRpmScale, 0, barMaxW);
     if (barW > barMaxW) barW = barMaxW; if (barW < 0) barW = 0;
     display->drawRect((int16_t)(offX + 4), (int16_t)(offY + 4), (int16_t)(w - 8), 12, SSD1306_WHITE);
     display->fillRect((int16_t)(offX + 4), (int16_t)(offY + 4), (int16_t)barW, 12, SSD1306_WHITE);
 
+    // Throttle Bar
     int throttleBarW = map(state.simThrottle, state.throttleMin, state.throttleMax, 0, barMaxW);
     if (throttleBarW > barMaxW) throttleBarW = barMaxW; if (throttleBarW < 0) throttleBarW = 0;
     display->drawRect((int16_t)(offX + 4), (int16_t)(offY + 20), (int16_t)(w - 8), 6, SSD1306_WHITE);
     display->fillRect((int16_t)(offX + 4), (int16_t)(offY + 20), (int16_t)throttleBarW, 6, SSD1306_WHITE);
 
+    // Text Values
+    display->setTextSize(2);
+    String rpmStr = String(rpm);
+    display->setCursor((int16_t)(offX + 4), (int16_t)(offY + 40));
+    display->print(rpmStr);
+
+    String spdStr = String(spd);
+    int16_t spdWidth = spdStr.length() * 12;
+    display->setCursor((int16_t)(offX + w - 4 - spdWidth), (int16_t)(offY + 40));
+    display->print(spdStr);
+
     display->setTextSize(1);
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 36)); display->print(String(spd) + " KM/H");
-    String tStr = String(tmp) + "\xF7" "C";
-    auto wt = (int16_t)(strlen(tStr.c_str()) * 6);
-    display->setCursor((int16_t)(w - wt - 6 + offX), (int16_t)(offY + 36)); display->print(tStr);
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 56)); display->print(String(rpm) + " RPM");
+    display->setCursor((int16_t)(offX + 4 + (rpmStr.length() * 12)), (int16_t)(offY + 48));
+    display->print("RPM");
+
+    display->setCursor((int16_t)(offX + w - 4 - spdWidth - 24), (int16_t)(offY + 48));
+    display->print("KM/H");
 }
 
 void drawScreenTimer(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setTextSize(1);
     String title = "POMIAR 0-100 KM/H";
     auto wt = (int16_t)(title.length() * 6);
-    display->setCursor((int16_t)(offX + (w - wt) / 2), (int16_t)(offY + 18));
+    display->setCursor((int16_t)(offX + (w - wt) / 2), (int16_t)(offY + 8));
     display->print(title);
 
     String valStr;
@@ -210,38 +226,38 @@ void drawScreenTimer(int16_t offX, int16_t offY, int16_t w, int16_t h) {
 
     display->setTextSize(2);
     auto wv = (int16_t)(valStr.length() * 12);
-    display->setCursor((int16_t)(offX + (w - wv) / 2), (int16_t)(offY + 40));
+    display->setCursor((int16_t)(offX + (w - wv) / 2), (int16_t)(offY + 32));
     display->print(valStr);
 }
 
 void drawScreenPeaking(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setTextSize(1);
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 16)); display->print("MAX RPM:");
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 8)); display->print("MAX RPM:");
     String p1 = String(state.peakRpm);
-    display->setCursor((int16_t)(122 - (int16_t)strlen(p1.c_str()) * 6 + offX), (int16_t)(offY + 16)); display->print(p1);
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 36)); display->print("MAX TMP:");
+    display->setCursor((int16_t)(122 - (int16_t)strlen(p1.c_str()) * 6 + offX), (int16_t)(offY + 8)); display->print(p1);
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 28)); display->print("MAX TMP:");
     String p2 = String(state.peakTemp) + "\xF7" "C";
-    display->setCursor((int16_t)(122 - (int16_t)strlen(p2.c_str()) * 6 + offX), (int16_t)(offY + 36)); display->print(p2);
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 56)); display->print("MAX SPD:");
+    display->setCursor((int16_t)(122 - (int16_t)strlen(p2.c_str()) * 6 + offX), (int16_t)(offY + 28)); display->print(p2);
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 48)); display->print("MAX SPD:");
     String p3 = String(state.peakSpeed) + " KM/H";
-    display->setCursor((int16_t)(122 - (int16_t)strlen(p3.c_str()) * 6 + offX), (int16_t)(offY + 56)); display->print(p3);
+    display->setCursor((int16_t)(122 - (int16_t)strlen(p3.c_str()) * 6 + offX), (int16_t)(offY + 48)); display->print(p3);
 }
 
 void drawScreenTrip(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setTextSize(1);
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 16)); display->print("DYSTANS:");
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 8)); display->print("DYSTANS:");
     String d1 = String(state.tripDistance, 2) + " km";
-    display->setCursor((int16_t)(122 - (int16_t)strlen(d1.c_str()) * 6 + offX), (int16_t)(offY + 16)); display->print(d1);
+    display->setCursor((int16_t)(122 - (int16_t)strlen(d1.c_str()) * 6 + offX), (int16_t)(offY + 8)); display->print(d1);
 
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 36)); display->print("SRED. SPAL:");
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 28)); display->print("SRED. SPAL:");
     float avgFuel = (state.tripDistance > 0) ? (state.tripFuelConsumed / state.tripDistance) * 100 : 0.0;
     String d2 = String(avgFuel, 1) + " L/100";
-    display->setCursor((int16_t)(122 - (int16_t)strlen(d2.c_str()) * 6 + offX), (int16_t)(offY + 36)); display->print(d2);
+    display->setCursor((int16_t)(122 - (int16_t)strlen(d2.c_str()) * 6 + offX), (int16_t)(offY + 28)); display->print(d2);
 
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 56)); display->print("SRED. PRED:");
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 48)); display->print("SRED. PRED:");
     float avgSpeed = (state.tripTimeElapsed > 0) ? (state.tripDistance / (state.tripTimeElapsed / 3600.0)) : 0.0;
     String d3 = String(avgSpeed, 0) + " km/h";
-    display->setCursor((int16_t)(122 - (int16_t)strlen(d3.c_str()) * 6 + offX), (int16_t)(offY + 56)); display->print(d3);
+    display->setCursor((int16_t)(122 - (int16_t)strlen(d3.c_str()) * 6 + offX), (int16_t)(offY + 48)); display->print(d3);
 }
 
 void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, int16_t h) {
