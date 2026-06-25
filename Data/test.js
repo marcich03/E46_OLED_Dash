@@ -8,6 +8,7 @@ var shiftRpmConfig = 6000;
 var slotMapping = { slot1: "rpm", slot2: "speed", slot3: "temp", slot4: "volt" };
 var isBootAnimating = false; var currentBootLogo = "mpower";
 var throttleMin = 15; var throttleMax = 90;
+const screenNames = ["Siatka", "Trip", "Sport", "Timer", "Peaki"];
 
 // --- Mock WebSocket ---
 const mockWebSocket = {
@@ -22,6 +23,9 @@ const mockWebSocket = {
         if (msg.restoreConfig) {
             console.log("Przywracanie konfiguracji:", msg.restoreConfig);
             // Tutaj można by zaimplementować logikę przywracania, ale na razie wystarczy log
+        }
+        if (msg.toggleScreen !== undefined) {
+            mockConfig.screens[msg.toggleScreen] = !mockConfig.screens[msg.toggleScreen];
         }
     },
     onopen: () => {},
@@ -74,7 +78,8 @@ const mockConfig = {
     s2: "speed",
     s3: "temp",
     s4: "volt",
-    gears: [0, 10, 20, 30, 40, 50, 0]
+    gears: [0, 10, 20, 30, 40, 50, 0],
+    screens: [true, true, true, true, true]
 };
 
 function generateTelemetry() {
@@ -174,6 +179,12 @@ function initSubscribers() {
         });
     });
 
+    for(let i=0; i<5; i++) {
+        document.getElementById(`screen${i}`).addEventListener("change", function() {
+            sendConfigDebounced({ toggleScreen: i });
+        });
+    }
+
     document.getElementById("offsetXSlider").addEventListener("input", function() { currentOffsetX = parseInt(this.value); document.getElementById("offsetXOutput").innerText = currentOffsetX + "px"; updateSimulatorGeometry(); sendConfigDebounced({ offsetX: currentOffsetX }); });
     document.getElementById("offsetYSlider").addEventListener("input", function() { currentOffsetY = parseInt(this.value); document.getElementById("offsetYOutput").innerText = currentOffsetY + "px"; updateSimulatorGeometry(); sendConfigDebounced({ offsetY: currentOffsetY }); });
     document.getElementById("widthSlider").addEventListener("input", function() { currentWidth = parseInt(this.value); document.getElementById("widthOutput").innerText = currentWidth + "px"; sendConfigDebounced({ activeWidth: currentWidth }); });
@@ -234,7 +245,10 @@ function initSubscribers() {
     });
 
     document.getElementById("btnChangeScreen").addEventListener("click", function() {
-        mockState.profile = (mockState.profile + 1) % 5;
+        do {
+            mockState.profile = (mockState.profile + 1) % 5;
+        } while (!mockConfig.screens[mockState.profile]);
+        document.getElementById("liveScreenName").innerText = screenNames[mockState.profile] || "Nieznany";
         generateTelemetry();
     });
 
@@ -284,6 +298,7 @@ const originalOnMessage = mockWebSocket.onmessage;
 mockWebSocket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     if (data.telemetry) {
+        document.getElementById("liveScreenName").innerText = screenNames[data.profile] || "Nieznany";
         document.getElementById("currentThrottle").innerText = data.throttle.toFixed(0);
         [0,1,2,3,4].forEach(id => {
             let el = document.getElementById(`oledCanvasScreen${id}`);
@@ -360,6 +375,10 @@ mockWebSocket.onmessage = (event) => {
         if(logoSelect) {
             logoSelect.value = data.bLogo;
             currentBootLogo = data.bLogo;
+        }
+
+        for(let i=0; i<5; i++) {
+            document.getElementById(`screen${i}`).checked = data.screens[i];
         }
 
         slotMapping.slot1 = data.s1; document.getElementById("selSlot1").value = data.s1;

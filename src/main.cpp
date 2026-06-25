@@ -38,6 +38,7 @@ struct DashboardState {
     int throttleMin = 0;
     int throttleMax = 100;
     float gearRatios[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    bool screenEnabled[5] = {true, true, true, true, true};
 
     String slot1 = "rpm";
     String slot2 = "speed";
@@ -122,6 +123,7 @@ void loadSettingsFromFlash() {
     state.throttleMin = prefs.getInt("thrMin", 0);
     state.throttleMax = prefs.getInt("thrMax", 100);
     prefs.getBytes("gears", state.gearRatios, sizeof(state.gearRatios));
+    prefs.getBytes("screens", state.screenEnabled, sizeof(state.screenEnabled));
     state.slot1 = prefs.getString("s1", "rpm");
     state.slot2 = prefs.getString("s2", "speed");
     state.slot3 = prefs.getString("s3", "temp");
@@ -455,10 +457,10 @@ void renderTask(void * pvParameters) {
                 }
             } else {
                 if (profile == 0) drawScreenGrid((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
-                else if (profile == 1) drawScreenSport((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
-                else if (profile == 2) drawScreenTimer((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
-                else if (profile == 3) drawScreenPeaking((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
-                else if (profile == 4) drawScreenTrip((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
+                else if (profile == 1) drawScreenTrip((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
+                else if (profile == 2) drawScreenSport((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
+                else if (profile == 3) drawScreenTimer((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
+                else if (profile == 4) drawScreenPeaking((int16_t)offX, (int16_t)offY, (int16_t)w, (int16_t)h);
             }
             display->display();
         }
@@ -492,6 +494,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
                 JsonArray gears = config["gears"];
                 for(int i=0; i<7; i++) { state.gearRatios[i] = gears[i]; }
                 prefs.putBytes("gears", state.gearRatios, sizeof(state.gearRatios));
+                JsonArray screens = config["screens"];
+                for(int i=0; i<5; i++) { state.screenEnabled[i] = screens[i]; }
+                prefs.putBytes("screens", state.screenEnabled, sizeof(state.screenEnabled));
             }
             if (doc["offsetX"].is<int>()) { state.offsetX = doc["offsetX"]; prefs.putInt("offX", state.offsetX); }
             if (doc["offsetY"].is<int>()) { state.offsetY = doc["offsetY"]; prefs.putInt("offY", state.offsetY); }
@@ -511,6 +516,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
                 if (gear >= 0 && gear <= 5 && state.simRpm > 0 && state.simSpeed > 0) {
                     state.gearRatios[gear] = (float)state.simRpm / (float)state.simSpeed;
                     prefs.putBytes("gears", state.gearRatios, sizeof(state.gearRatios));
+                }
+            }
+            if (doc["toggleScreen"].is<int>()) {
+                int screenId = doc["toggleScreen"];
+                if (screenId >= 0 && screenId < 5) {
+                    state.screenEnabled[screenId] = !state.screenEnabled[screenId];
+                    prefs.putBytes("screens", state.screenEnabled, sizeof(state.screenEnabled));
                 }
             }
             if (doc["bootLogo"].is<const char*>()) { state.bootLogo = doc["bootLogo"].as<String>(); prefs.putString("bLogo", state.bootLogo); }
@@ -543,6 +555,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
         syncDoc["s4"] = state.slot4;
         JsonArray gears = syncDoc.createNestedArray("gears");
         for(int i=0; i<7; i++) { gears.add(state.gearRatios[i]); }
+        JsonArray screens = syncDoc.createNestedArray("screens");
+        for(int i=0; i<5; i++) { screens.add(state.screenEnabled[i]); }
         xSemaphoreGive(stateMutex);
         char buffer[1024]; serializeJson(syncDoc, buffer); client->text(buffer);
     } else if (type == WS_EVT_DATA) {
@@ -571,6 +585,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                 config["s4"] = state.slot4;
                 JsonArray gears = config.createNestedArray("gears");
                 for(int i=0; i<7; i++) { gears.add(state.gearRatios[i]); }
+                JsonArray screens = config.createNestedArray("screens");
+                for(int i=0; i<5; i++) { screens.add(state.screenEnabled[i]); }
                 xSemaphoreGive(stateMutex);
                 char buffer[1024];
                 serializeJson(backupDoc, buffer);
@@ -671,13 +687,17 @@ void loop() {
         else if (currentReading == LOW && isPressed) {
             if (!longPressHandled && (millis() - pressTime > 1000)) {
                 xSemaphoreTake(stateMutex, portMAX_DELAY);
-                if (state.activeProfile == 3) { state.peakRpm = 0; state.peakTemp = 0; state.peakSpeed = 0; }
-                else if (state.activeProfile == 2) { state.timerState = 0; state.timerResult = 0; }
-                else if (state.activeProfile == 4) {
+                if (state.activeProfile == 1) { // Trip
                     state.tripDistance = 0.0; state.tripFuelConsumed = 0.0; state.tripTimeElapsed = 0;
                     prefs.begin("bimmer-dash", false);
                     prefs.putFloat("tripDist", 0.0); prefs.putFloat("tripFuel", 0.0); prefs.putUInt("tripTime", 0);
                     prefs.end();
+                }
+                else if (state.activeProfile == 3) { // Timer
+                    state.timerState = 0; state.timerResult = 0;
+                }
+                else if (state.activeProfile == 4) { // Peaking
+                    state.peakRpm = 0; state.peakTemp = 0; state.peakSpeed = 0;
                 }
                 xSemaphoreGive(stateMutex);
                 longPressHandled = true;
@@ -687,7 +707,10 @@ void loop() {
             isPressed = false;
             if (!longPressHandled) {
                 xSemaphoreTake(stateMutex, portMAX_DELAY);
-                state.activeProfile++; if (state.activeProfile > 4) state.activeProfile = 0;
+                do {
+                    state.activeProfile++;
+                    if (state.activeProfile > 4) state.activeProfile = 0;
+                } while (!state.screenEnabled[state.activeProfile]);
                 xSemaphoreGive(stateMutex);
             }
         }
