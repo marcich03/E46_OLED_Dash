@@ -510,10 +510,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
             if (doc["offsetX"].is<int>()) { state.offsetX = doc["offsetX"]; prefs.putInt("offX", state.offsetX); }
             if (doc["offsetY"].is<int>()) { state.offsetY = doc["offsetY"]; prefs.putInt("offY", state.offsetY); }
             if (doc["activeWidth"].is<int>()) { state.activeWidth = doc["activeWidth"]; prefs.putInt("actW", state.activeWidth); }
-            if (doc["activeHeight"].is<int>()) { state.activeHeight = doc["actH", state.activeHeight); }
+            if (doc["activeHeight"].is<int>()) { state.activeHeight = doc["actH", state.activeHeight]; }
             if (doc["brightness"].is<int>()) { state.brightness = doc["brightness"]; prefs.putInt("bright", state.brightness); }
             if (doc["shiftRpm"].is<int>()) { state.shiftRpm = doc["shiftRpm"]; prefs.putInt("shift", state.shiftRpm); }
-            if (doc["maxTemp"].is<int>()) { state.maxTemp = doc["maxT", state.maxTemp); }
+            if (doc["maxTemp"].is<int>()) { state.maxTemp = doc["maxT", state.maxTemp]; }
             if (doc["adaptThrottle"].is<const char*>()) {
                 String adaptType = doc["adaptThrottle"].as<String>();
                 if (adaptType == "min") { state.throttleMin = state.simThrottle; prefs.putInt("thrMin", state.throttleMin); }
