@@ -199,6 +199,9 @@ void drawScreenPeaking(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 56)); display->print("MAX SPD:");
     String p3 = String(state.peakSpeed) + " KM/H";
     display->setCursor((int16_t)(122 - (int16_t)strlen(p3.c_str()) * 6 + offX), (int16_t)(offY + 56)); display->print(p3);
+    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 76)); display->print("CURRENT GEAR:");
+    String p4 = (state.currentGear > 0) ? String(state.currentGear) : "N";
+    display->setCursor((int16_t)(122 - (int16_t)strlen(p4.c_str()) * 6 + offX), (int16_t)(offY + 76)); display->print(p4);
 }
 
 void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, int16_t h) {
