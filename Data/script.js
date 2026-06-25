@@ -128,7 +128,9 @@ function updateOledSlotDisplay(slotId, metrics) {
             u = metrics.speed < 3 ? "L/H" : "L/100";
             break;
         case "gear":
-            v = metrics.gear > 0 ? metrics.gear : "N"; u = "";
+            if (metrics.gear === -1) { v = "R"; }
+            else { v = metrics.gear > 0 ? metrics.gear : "N"; }
+            u = "";
             break;
     }
     let elV = document.getElementById(slotId + "_val");

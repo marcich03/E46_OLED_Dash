@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aktualizacja OTA</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .progress-bar {
+            width: 100%;
+            background-color: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .progress-bar-fill {
+            height: 25px;
+            width: 0%;
+            background-color: #ff9000;
+            text-align: center;
+            line-height: 25px;
+            color: black;
+            font-weight: bold;
+            transition: width 0.25s;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="card header-card">
+            <h1>Aktualizacja Systemu (OTA)</h1>
+        </header>
+
+        <section class="card">
+            <h2>Wybierz plik firmware (.bin)</h2>
+            <p>Upewnij się, że zapłon w samochodzie jest włączony i pozostanie tak przez cały proces aktualizacji.</p>
+
+            <input type="file" id="fileInput" accept=".bin" class="btn" style="margin-top: 10px;">
+            <button id="uploadButton" class="btn btn-prime" style="margin-top: 10px;">Wgraj oprogramowanie</button>
+
+            <div id="progress" class="progress-bar" style="display: none;">
+                <div id="progressBar" class="progress-bar-fill">0%</div>
+            </div>
+            <div id="status"></div>
+        </section>
+
+        <a href="/" class="btn" style="margin-top: 20px; text-align: center;">Powrót do strony głównej</a>
+    </div>
+    <script src="update.js"></script>
+</body>
+</html>

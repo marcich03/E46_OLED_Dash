@@ -37,7 +37,7 @@ struct DashboardState {
     int maxTemp = 100;
     int throttleMin = 0;
     int throttleMax = 100;
-    float gearRatios[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    float gearRatios[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // 0: Reverse, 1-5: Forward, 6: Not used
 
     String slot1 = "rpm";
     String slot2 = "speed";
@@ -47,7 +47,7 @@ struct DashboardState {
     int simRpm = 0; int simSpeed = 0; int simTemp = 0;
     int simOil = 0; int simIat = 0; float simVolt = 0.0; float simFuel = 0.0;
     int simThrottle = 0;
-    int currentGear = 0;
+    int currentGear = 0; // -1: Reverse, 0: Neutral, 1-5: Forward
     int peakRpm = 0; int peakSpeed = 0; int peakTemp = 0;
     int timerState = 0;
     uint32_t timerStartMillis = 0;
@@ -120,7 +120,8 @@ void getMetricData(const String& type, String &val, String &unit) {
         if (state.simSpeed < 3) { val = String(state.simFuel, 1); unit = "L/H"; }
         else { val = String(state.simFuel, 1); unit = "L/100"; }
     } else if (type == "gear") {
-        val = (state.currentGear > 0) ? String(state.currentGear) : "N";
+        if (state.currentGear == -1) { val = "R"; }
+        else { val = (state.currentGear > 0) ? String(state.currentGear) : "N"; }
         unit = "";
     } else { val = "---"; unit = ""; }
 }
@@ -199,9 +200,6 @@ void drawScreenPeaking(int16_t offX, int16_t offY, int16_t w, int16_t h) {
     display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 56)); display->print("MAX SPD:");
     String p3 = String(state.peakSpeed) + " KM/H";
     display->setCursor((int16_t)(122 - (int16_t)strlen(p3.c_str()) * 6 + offX), (int16_t)(offY + 56)); display->print(p3);
-    display->setCursor((int16_t)(6 + offX), (int16_t)(offY + 76)); display->print("CURRENT GEAR:");
-    String p4 = (state.currentGear > 0) ? String(state.currentGear) : "N";
-    display->setCursor((int16_t)(122 - (int16_t)strlen(p4.c_str()) * 6 + offX), (int16_t)(offY + 76)); display->print(p4);
 }
 
 void drawBootAnimation(uint32_t timeElapsed, const String& logoType, int16_t w, int16_t h) {
@@ -266,7 +264,7 @@ void calculateGear() {
         float currentRatio = (float)state.simRpm / (float)state.simSpeed;
         int bestGear = 0;
         float minDiff = 1000.0;
-        for (int i = 1; i <= 6; i++) {
+        for (int i = 0; i <= 5; i++) { // 0 for R, 1-5 for forward
             if (state.gearRatios[i] > 0.1) {
                 float diff = abs(currentRatio - state.gearRatios[i]);
                 if (diff < minDiff) {
@@ -276,7 +274,7 @@ void calculateGear() {
             }
         }
         if (minDiff < 20.0) {
-            state.currentGear = bestGear;
+            state.currentGear = (bestGear == 0) ? -1 : bestGear;
         } else {
             state.currentGear = 0;
         }
@@ -426,9 +424,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
                 if (adaptType == "min") { state.throttleMin = state.simThrottle; prefs.putInt("thrMin", state.throttleMin); }
                 else if (adaptType == "max") { state.throttleMax = state.simThrottle; prefs.putInt("thrMax", state.throttleMax); }
             }
-            if (doc["adaptGear"].is<int>()) {
-                int gear = doc["adaptGear"];
-                if (gear >= 1 && gear <= 6 && state.simRpm > 0 && state.simSpeed > 0) {
+            if (doc["adaptGear"].is<const char*>()) {
+                String gearStr = doc["adaptGear"].as<String>();
+                int gear = (gearStr == "R") ? 0 : gearStr.toInt();
+                if (gear >= 0 && gear <= 5 && state.simRpm > 0 && state.simSpeed > 0) {
                     state.gearRatios[gear] = (float)state.simRpm / (float)state.simSpeed;
                     prefs.putBytes("gears", state.gearRatios, sizeof(state.gearRatios));
                 }
@@ -535,25 +534,34 @@ void setup() {
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){ request->send(LittleFS, "/index.html", "text/html"); });
     server.serveStatic("/", LittleFS, "/");
+
     server.on("/update", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(200, "text/html",
-            "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-            "<h2 style='font-family:sans-serif; color:#333;'>E46 OLED - Serwis OTA</h2>"
-            "<form method='POST' action='/update' enctype='multipart/form-data'>"
-            "<input type='file' name='update' accept='.bin' style='margin-bottom:20px;'><br>"
-            "<input type='submit' value='Wgraj nowy system' style='padding:10px; background:#ff9000; border:none; font-weight:bold;'>"
-            "</form>");
+        request->send(LittleFS, "/update.html", "text/html");
     });
+
     server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request){
         bool shouldReboot = !Update.hasError();
-        AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot ? "OK! TRWA RESTART ZEGAROW..." : "BLAD WGRYWANIA! SPROBUJ PONOWNIE.");
+        AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot ? "OK" : "FAIL");
         response->addHeader("Connection", "close");
         request->send(response);
         if(shouldReboot) { delay(500); ESP.restart(); }
     }, [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
-        if(!index){ isUpdatingOTA = true; if(!Update.begin(UPDATE_SIZE_UNKNOWN)){ Update.printError(Serial); } }
-        if(!Update.hasError()){ if(Update.write(data, len) != len){ Update.printError(Serial); } }
-        if(final){ if(!Update.end(true)){ Update.printError(Serial); } }
+        if(!index){
+            isUpdatingOTA = true;
+            if(!Update.begin(UPDATE_SIZE_UNKNOWN)){
+                Update.printError(Serial);
+            }
+        }
+        if(!Update.hasError()){
+            if(Update.write(data, len) != len){
+                Update.printError(Serial);
+            }
+        }
+        if(final){
+            if(!Update.end(true)){
+                Update.printError(Serial);
+            }
+        }
     });
 
     ws.onEvent(onEvent);
