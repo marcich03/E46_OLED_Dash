@@ -45,7 +45,7 @@ struct DashboardState {
     String slot4 = "volt";
 
     int simRpm = 0; int simSpeed = 0; int simTemp = 0;
-    int simOil = 0; int simIat = 0; float simVolt = 0.0; float simFuel = 0.0;
+    int simOil = 0; int simIat = 0; float simVolt = 0.0; float simFuel = 0.0; float simFuelLvl = 0.0;
     int simThrottle = 0;
     int currentGear = 0;
     int peakRpm = 0; int peakSpeed = 0; int peakTemp = 0;
@@ -87,14 +87,18 @@ void canTask(void * pvParameters) {
         if (twai_receive(&message, pdMS_TO_TICKS(10)) == ESP_OK) {
             xSemaphoreTake(stateMutex, portMAX_DELAY);
             if (message.identifier == 0x316) { state.simRpm = (int)((message.data[3] * 256 + message.data[2]) / 6.4); }
-            else if (message.identifier == 0x329) { state.simTemp = (int)((message.data[1] * 0.75) - 48); }
+            else if (message.identifier == 0x329) {
+                state.simIat = (int)message.data[0] - 40;
+                state.simTemp = (int)((message.data[1] * 0.75) - 48);
+            }
             else if (message.identifier == 0x153) { state.simSpeed = (message.data[2] * 256 + message.data[1]) / 128; }
-            else if (message.identifier == 0x1F6) { state.simOil = (int)message.data[1] - 48; }
+            else if (message.identifier == 0x1F6) { state.simOil = (int)message.data[1] - 40; }
             else if (message.identifier == 0x121) { state.simThrottle = (int)message.data[1]; }
             else if (message.identifier == 0x545) {
-                if (state.simSpeed < 3) { state.simFuel = (float)(message.data[1] * 256 + message.data[0]) / 100.0f; }
-                else { state.simFuel = (float)(message.data[5] * 256 + message.data[4]) / 100.0f; }
+                if (state.simSpeed < 3) { state.simFuel = (float)(message.data[1] * 256 + message.data[0]) / 1000.0f; }
+                else { state.simFuel = (float)(message.data[5] * 256 + message.data[4]) / 32.0f; }
             }
+            else if (message.identifier == 0x34D) { state.simFuelLvl = (float)message.data[0]; }
             else if (message.identifier == 0x3B7) {
                 state.doorOpen_FR = (message.data[0] & 0x01) != 0;
                 state.doorOpen_FL = (message.data[0] & 0x02) != 0;
@@ -144,6 +148,8 @@ void getMetricData(const String& type, String &val, String &unit) {
     else if (type == "fuel_l") {
         if (state.simSpeed < 3) { val = String(state.simFuel, 1); unit = "L/H"; }
         else { val = String(state.simFuel, 1); unit = "L/100"; }
+    } else if (type == "fuel_lvl") {
+        val = String(state.simFuelLvl, 0); unit = "L";
     } else if (type == "gear") {
         if (state.currentGear == -1) { val = "R"; }
         else { val = (state.currentGear > 0) ? String(state.currentGear) : "N"; }
@@ -348,17 +354,20 @@ void updateTripComputer() {
         return;
     }
 
-    if (state.simSpeed > 5) {
-        float deltaTime = (now - lastTripUpdate) / 1000.0;
-        state.tripTimeElapsed += deltaTime;
-        state.tripDistance += (state.simSpeed * deltaTime) / 3600.0;
+    float deltaTime = (float)(now - lastTripUpdate) / 1000.0f;
 
-        if (state.simSpeed < 3) { // L/H
-            state.tripFuelConsumed += (state.simFuel * deltaTime) / 3600.0;
-        } else { // L/100km
-            state.tripFuelConsumed += ((state.simFuel * state.simSpeed) / 100.0) * (deltaTime / 3600.0);
-        }
+    if (state.simSpeed > 5) { // Moving
+        state.tripTimeElapsed += deltaTime;
+        float distanceDelta = (state.simSpeed * deltaTime) / 3600.0f;
+        state.tripDistance += distanceDelta;
+        // simFuel is in L/100km
+        state.tripFuelConsumed += (state.simFuel / 100.0f) * distanceDelta;
+    } else if (state.simRpm > 400) { // Idling, engine is on
+        // simFuel is in L/H
+        state.tripFuelConsumed += (state.simFuel * deltaTime) / 3600.0f;
+        state.tripTimeElapsed += deltaTime;
     }
+
     lastTripUpdate = now;
 }
 
@@ -496,10 +505,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
             if (doc["offsetX"].is<int>()) { state.offsetX = doc["offsetX"]; prefs.putInt("offX", state.offsetX); }
             if (doc["offsetY"].is<int>()) { state.offsetY = doc["offsetY"]; prefs.putInt("offY", state.offsetY); }
             if (doc["activeWidth"].is<int>()) { state.activeWidth = doc["activeWidth"]; prefs.putInt("actW", state.activeWidth); }
-            if (doc["activeHeight"].is<int>()) { state.activeHeight = doc["activeHeight"]; prefs.putInt("actH", state.activeHeight); }
+            if (doc["activeHeight"].is<int>()) { state.activeHeight = doc["actH", state.activeHeight); }
             if (doc["brightness"].is<int>()) { state.brightness = doc["brightness"]; prefs.putInt("bright", state.brightness); }
             if (doc["shiftRpm"].is<int>()) { state.shiftRpm = doc["shiftRpm"]; prefs.putInt("shift", state.shiftRpm); }
-            if (doc["maxTemp"].is<int>()) { state.maxTemp = doc["maxTemp"]; prefs.putInt("maxT", state.maxTemp); }
+            if (doc["maxTemp"].is<int>()) { state.maxTemp = doc["maxT", state.maxTemp); }
             if (doc["adaptThrottle"].is<const char*>()) {
                 String adaptType = doc["adaptThrottle"].as<String>();
                 if (adaptType == "min") { state.throttleMin = state.simThrottle; prefs.putInt("thrMin", state.throttleMin); }
@@ -712,6 +721,7 @@ void loop() {
         doc["pTmp"] = state.peakTemp;
         doc["tState"] = state.timerState;
         doc["fuel"] = state.simFuel;
+        doc["fuelLvl"] = state.simFuelLvl;
         doc["oil"] = state.simOil;
         doc["iat"] = state.simIat;
         doc["tTime"] = (state.timerState == 1) ? ((millis() - state.timerStartMillis) / 1000.0) : state.timerResult;
